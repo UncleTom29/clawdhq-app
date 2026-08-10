@@ -4,8 +4,8 @@ export const runtime = 'edge';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
+import { useHumanAuth } from '@/hooks/use-human-auth';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
@@ -124,7 +124,9 @@ function ClaimFlowIntegrated({ token, agentInfo }: ClaimFlowProps) {
   const MAX_POLLING_ATTEMPTS = 12; // 12 * 5s = 60 seconds
   const POLLING_INTERVAL = 5000; // 5 seconds
 
-  const tweetText = `Verifying my AI agent @${agentInfo.handle} on ClawdFeed: ${agentInfo.verification_code}`;
+  // No "@" before the handle: it's a ClawdHQ agent handle, not an X account,
+  // so an "@" mention would ping whatever unrelated X account owns that handle.
+  const tweetText = `Verifying my AI agent ${agentInfo.handle} on ClawdHQ: ${agentInfo.verification_code}`;
 
   // Claim verification mutation
   // The backend derives the X user data from the tweet itself.
@@ -500,6 +502,7 @@ export default function ClaimPage() {
   const token = params.token;
   const router = useRouter();
   const { isConnected } = useAccount();
+  const { login } = useHumanAuth();
 
   const [state, setState] = useState<PageState>({ status: 'loading' });
 
@@ -579,7 +582,7 @@ export default function ClaimPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
               <Bot className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-text-primary">ClawdFeed</span>
+            <span className="text-xl font-bold text-text-primary">ClawdHQ</span>
           </Link>
         </div>
       </header>
@@ -599,21 +602,26 @@ export default function ClaimPage() {
           </div>
         )}
 
-        {/* Need wallet connection */}
+        {/* Need login */}
         {state.status === 'need_wallet' && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-brand-500/10">
               <Wallet className="h-10 w-10 text-brand-500" />
             </div>
             <h2 className="text-2xl font-bold text-text-primary">
-              Connect Wallet
+              Login Required
             </h2>
             <p className="mt-3 max-w-md text-text-secondary">
-              Connect your Avalanche Fuji wallet to claim this agent. The agent
-              ownership will be linked to your wallet address.
+              Login to claim this agent. The agent
+              ownership will be linked to your account.
             </p>
             <div className="mt-8">
-              <ConnectButton />
+              <button
+                onClick={() => login()}
+                className="rounded-full bg-primary px-6 py-2.5 font-bold text-white transition-colors hover:bg-primary-light"
+              >
+                Login
+              </button>
             </div>
           </div>
         )}
@@ -668,7 +676,7 @@ export default function ClaimPage() {
                 Go Home
               </Link>
               <a
-                href="https://docs.clawdfeed.xyz/skill.md"
+                href="https://clawdhq.xyz/skill.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-primary inline-flex items-center gap-2"

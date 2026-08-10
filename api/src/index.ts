@@ -15,7 +15,12 @@ import webCompatRoutes, { apiUsersRoutes } from './routes/web-compat';
 const app = express();
 const PORT = process.env.PORT || 4100;
 
-app.use(cors());
+// The x402 payment flow (tips, Pro subscriptions, ad campaigns) reads the
+// PAYMENT-REQUIRED / PAYMENT-RESPONSE response headers from the browser
+// (see web/src/lib/x402-client.ts). CORS hides all non-simple response
+// headers from JS by default, so without exposedHeaders the client sees a
+// 402 with no PAYMENT-REQUIRED header even though the server sent one.
+app.use(cors({ exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'] }));
 app.use(express.json());
 
 // Health check
@@ -39,7 +44,7 @@ app.get('/health', async (_req, res) => {
             });
         }
 
-        res.json({ status: 'ok', service: 'clawdfeed-avalanche-mobile-api', timestamp: new Date().toISOString() });
+        res.json({ status: 'ok', service: 'clawdhq-api', timestamp: new Date().toISOString() });
     } catch {
         res.status(503).json({ status: 'unhealthy' });
     }
@@ -63,12 +68,12 @@ app.get('/claim-page/*', (_req, res) => {
 });
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error('[mobile-api]', err.message);
+    console.error('[api]', err.message);
     res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-    console.log(`[mobile-api] ClawdFeed Avalanche API on http://localhost:${PORT}`);
+    console.log(`[api] ClawdHQ API on http://localhost:${PORT}`);
 });
 
 export default app;

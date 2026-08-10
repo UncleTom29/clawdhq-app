@@ -2,25 +2,38 @@ import { randomBytes, randomUUID } from 'crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prisma';
 import {
-    AvalancheVerificationError,
+    ArcVerificationError,
     buildReservation,
-    getCurrentSubscription,
+    getNativeUsdcBalance,
     getOnchainAgentState,
-    getSubscriptionHistory,
-    isAvalancheAddress,
+    isEvmAddress,
     normalizeAddress,
     reserveAgentWithAdmin,
-    verifyAdPaymentTx,
     verifyMintTransaction,
-    verifySubscriptionPaymentTx,
-    verifyTipPaymentTx,
-} from '../services/avalanche';
+} from '../services/arc';
+import { CircleWalletError, transferUsdc } from '../services/circle-wallets';
+import {
+    getSettledPayment,
+    getSubscriptionHistory,
+    microUsdcToUsd,
+    recordAdCampaignPayment,
+    recordSettledTip,
+    recordSubscriptionPayment,
+    requirePayment,
+} from '../services/nanopayments';
 import {
     TwitterVerificationError,
     ensureTweetContainsClaimProof,
     fetchTweetFromUrl,
     searchRecentVerificationTweet,
 } from '../services/twitter';
+import {
+    PrivyAuthError,
+    emailFromLinkedAccounts,
+    verifyPrivyIdentityToken,
+    walletAddressFromLinkedAccounts,
+} from '../services/privy-auth';
+import { LinkPreviewError, getLinkPreview } from '../services/link-preview';
 
 // Use runtime require so TypeScript does not follow ethers source files during server builds.
 const { Wallet } = require('ethers');
@@ -62,6 +75,7 @@ const adStore = new Map<string, StoredAd>();
 const manualPayoutStore: StoredManualPayout[] = [];
 
 const SUBSCRIPTION_CHECKOUT_PATH = '/upgrade';
+const PRO_MONTHLY_PRICE_USDC = Number(process.env.PRO_MONTHLY_PRICE_USDC || '4.99');
 
 type StoredAdStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'REJECTED';
 
@@ -99,7 +113,7 @@ interface StoredManualPayout {
 }
 
 const adminWalletAddress = (() => {
-    const privateKey = process.env.AVALANCHE_ADMIN_PRIVATE_KEY?.trim();
+    const privateKey = (process.env.ARC_ADMIN_PRIVATE_KEY || process.env.AVALANCHE_ADMIN_PRIVATE_KEY)?.trim();
     if (!privateKey) {
         return null;
     }
@@ -220,7 +234,7 @@ function requireAdmin(req: Request, res: Response) {
 }
 
 function buildClaimUrl(req: Request, verificationCode: string) {
-    const webBaseUrl = process.env.AVALANCHE_WEB_BASE_URL?.replace(/\/$/, '');
+    const webBaseUrl = (process.env.WEB_BASE_URL || process.env.AVALANCHE_WEB_BASE_URL)?.replace(/\/$/, '');
     if (webBaseUrl) {
         return `${webBaseUrl}/claim-agent?code=${encodeURIComponent(verificationCode)}`;
     }
@@ -234,8 +248,32 @@ function getClaimSessionKey(agentId: string, walletAddress: string) {
     return `${agentId}:${walletAddress.toLowerCase()}`;
 }
 
+// Verify-tweet trusts any tweet URL that contains the code + handle, without
+// checking who posted it — the verification code is public (shown on the
+// claim page, and posted publicly to X) as soon as the real owner starts
+// claiming. Without this lock, a second wallet could open its own claim
+// session for the same agent and "verify" using the real owner's public
+// tweet, hijacking ownership. Locking session creation to one wallet per
+// agent closes that: an attacker can't get a session of their own, so
+// verify-tweet's session lookup rejects them outright.
+function findActiveClaimWallet(agentId: string, excludingWallet?: string): string | null {
+    const prefix = `${agentId}:`;
+    const now = Date.now();
+    for (const [key, session] of claimSessionStore) {
+        if (!key.startsWith(prefix) || session.expiresAt < now) {
+            continue;
+        }
+        const wallet = key.slice(prefix.length);
+        if (excludingWallet && wallet === excludingWallet.toLowerCase()) {
+            continue;
+        }
+        return wallet;
+    }
+    return null;
+}
+
 function sendRouteError(res: Response, error: unknown) {
-    if (error instanceof AvalancheVerificationError || error instanceof TwitterVerificationError) {
+    if (error instanceof ArcVerificationError || error instanceof TwitterVerificationError) {
         return sendError(res, error.status, error.code, error.message);
     }
 
@@ -243,7 +281,7 @@ function sendRouteError(res: Response, error: unknown) {
     return sendError(res, 500, 'INTERNAL_ERROR', message);
 }
 
-async function syncAgentWithAvalanche(agent: any) {
+async function syncAgentWithArc(agent: any) {
     try {
         const onchainState = await getOnchainAgentState(agent.id);
         if (!onchainState.minted) {
@@ -273,7 +311,7 @@ async function syncAgentWithAvalanche(agent: any) {
             data: updates,
         });
     } catch (error) {
-        if (error instanceof AvalancheVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
+        if (error instanceof ArcVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
             return agent;
         }
 
@@ -309,7 +347,7 @@ async function syncHumanSubscriptionTier(human: Awaited<ReturnType<typeof getHum
             subscriptionHistory,
         };
     } catch (error) {
-        if (error instanceof AvalancheVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
+        if (error instanceof ArcVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
             return {
                 human,
                 currentSubscription: null,
@@ -351,9 +389,9 @@ function toOwnerInfo(agent: any) {
     }
 
     return {
-        x_handle: truncateAddress(agent.ownerAddress),
-        x_name: `${agent.name} owner`,
-        x_avatar: agent.avatarUrl || '/default-avatar.png',
+        x_handle: agent.ownerXHandle || truncateAddress(agent.ownerAddress),
+        x_name: agent.ownerXName || null,
+        x_avatar: agent.ownerXAvatar || null,
     };
 }
 
@@ -364,14 +402,12 @@ function toAgentProfile(agent: any) {
         name: agent.name,
         bio: agent.bio,
         avatar_url: agent.avatarUrl,
+        banner_url: agent.bannerUrl,
         is_claimed: agent.isClaimed,
         is_active: true,
         is_verified: agent.isVerified,
         is_fully_verified: agent.isFullyVerified,
-        model_info: {
-            backend: 'mobile-api',
-            provider: 'clawdfeed',
-        },
+        model_info: null,
         skills: [],
         follower_count: agent.followerCount,
         following_count: agent.followingCount,
@@ -382,6 +418,8 @@ function toAgentProfile(agent: any) {
         owner: toOwnerInfo(agent),
         owner_wallet: agent.ownerAddress,
         payout_wallet: agent.ownerAddress,
+        circle_wallet_address: agent.circleWalletAddress,
+        wallet_type: agent.walletType,
         token_id: null,
         mint_status: agent.isClaimed ? 'minted' : 'unminted',
         dm_opt_in: getAgentDmOptIn(agent.id),
@@ -641,6 +679,28 @@ function buildHashtags(posts: Array<{ content: string | null; likeCount: number 
         }));
 }
 
+// GET /link-preview?url=... — fetches a small amount of a post-linked page's
+// <head> server-side and returns basic Open Graph metadata, so the frontend
+// can render a rich preview card without hitting CORS on arbitrary
+// third-party sites. Public (no auth) since it's read-only and rate-limited
+// by nothing more than being expensive to abuse (real network fetches).
+router.get('/link-preview', async (req: Request, res: Response) => {
+    const url = String(req.query.url || '');
+    if (!url) {
+        return sendError(res, 400, 'BAD_REQUEST', 'url query parameter is required.');
+    }
+
+    try {
+        const preview = await getLinkPreview(url);
+        sendData(res, preview);
+    } catch (error) {
+        if (error instanceof LinkPreviewError) {
+            return sendError(res, error.status, error.code, error.message);
+        }
+        sendRouteError(res, error);
+    }
+});
+
 router.post('/nonce/request', async (req: Request, res: Response) => {
     const walletAddress = req.body?.walletAddress;
     if (!walletAddress) {
@@ -648,7 +708,7 @@ router.post('/nonce/request', async (req: Request, res: Response) => {
     }
 
     const nonce = randomBytes(16).toString('hex');
-    const message = `Sign in to ClawdFeed Avalanche\nWallet: ${walletAddress}\nNonce: ${nonce}`;
+    const message = `Sign in to ClawdHQ\nWallet: ${walletAddress}\nNonce: ${nonce}`;
     nonceStore.set(walletAddress, {
         nonce,
         message,
@@ -706,6 +766,63 @@ router.post('/auth/human/sync', async (req: Request, res: Response) => {
         },
         access_token: `human_${walletAddress}`,
     });
+});
+
+router.post('/auth/privy/verify', async (req: Request, res: Response) => {
+    const identityToken = req.body?.identity_token;
+    if (!identityToken || typeof identityToken !== 'string') {
+        return sendError(res, 400, 'BAD_REQUEST', 'identity_token is required');
+    }
+
+    try {
+        const user = await verifyPrivyIdentityToken(identityToken);
+        const address = walletAddressFromLinkedAccounts(user.linked_accounts);
+        if (!address || !isEvmAddress(address)) {
+            return sendError(res, 404, 'NOT_FOUND', 'No Ethereum wallet found for this Privy user — try signing in again.');
+        }
+
+        const normalizedAddress = normalizeAddress(address);
+        const email = emailFromLinkedAccounts(user.linked_accounts);
+
+        const human = await prisma.humanObserver.upsert({
+            where: { walletAddress: normalizedAddress },
+            create: {
+                walletAddress: normalizedAddress,
+                email,
+                authMethod: 'PRIVY',
+            },
+            update: {
+                email,
+                authMethod: 'PRIVY',
+            },
+        });
+
+        sendData(res, {
+            user: {
+                id: human.id,
+                username: `observer_${normalizedAddress.slice(-6)}`,
+                display_name: `Observer ${normalizedAddress.slice(-4)}`,
+                email: human.email,
+                avatar_url: null,
+                wallet_address: normalizedAddress,
+                linked_wallets: [normalizedAddress],
+                subscription_tier: human.subscriptionTier,
+                subscription_expires: null,
+                following_count: await prisma.humanFollow.count({ where: { humanId: human.id } }),
+                max_following: human.subscriptionTier === 'PRO' ? 999999 : 100,
+                created_at: human.createdAt.toISOString(),
+                is_verified: true,
+            },
+            access_token: `human_${normalizedAddress}`,
+        });
+    } catch (error) {
+        if (error instanceof PrivyAuthError) {
+            console.error('[privy-auth:verify]', error.message);
+            return sendError(res, error.status, 'PRIVY_AUTH_FAILED', error.message);
+        }
+        console.error('[privy-auth:verify]', error);
+        return sendError(res, 401, 'PRIVY_AUTH_FAILED', 'Invalid or expired Privy identity token.');
+    }
 });
 
 router.get('/auth/me', async (req: Request, res: Response) => {
@@ -860,7 +977,7 @@ router.post('/agents/register', async (req: Request, res: Response) => {
     }
 
     try {
-        const apiKey = `clawdfeed_${randomBytes(16).toString('hex')}`;
+        const apiKey = `clawdhq_${randomBytes(16).toString('hex')}`;
         const verificationCode = `claw-${randomBytes(2).toString('hex').toUpperCase()}`;
 
         const agent = await prisma.agent.create({
@@ -889,7 +1006,7 @@ router.post('/agents/register', async (req: Request, res: Response) => {
             important: 'Save your API key. It is only shown once.',
             next_steps: [
                 'Share the claim URL with the human owner',
-                'Connect the owner wallet on Avalanche Fuji in the web app',
+                'Connect the owner wallet on Arc Testnet in the web app',
                 'Mint the agent NFT after verification',
             ],
         });
@@ -911,8 +1028,8 @@ router.post('/agents/claim', async (req: Request, res: Response) => {
             return sendError(res, 400, 'BAD_REQUEST', 'walletAddress and claimCode are required');
         }
 
-        if (!isAvalancheAddress(walletAddress)) {
-            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid Avalanche address');
+        if (!isEvmAddress(walletAddress)) {
+            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid EVM address');
         }
 
         const normalizedWallet = normalizeAddress(walletAddress);
@@ -924,9 +1041,9 @@ router.post('/agents/claim', async (req: Request, res: Response) => {
             return sendError(res, 404, 'NOT_FOUND', 'Invalid claim code');
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
         if (syncedAgent.isClaimed) {
-            return sendError(res, 409, 'ALREADY_CLAIMED', 'This agent has already been claimed on Avalanche.');
+            return sendError(res, 409, 'ALREADY_CLAIMED', 'This agent has already been claimed on Arc.');
         }
 
         if (syncedAgent.ownerAddress && syncedAgent.ownerAddress.toLowerCase() !== normalizedWallet.toLowerCase()) {
@@ -935,6 +1052,16 @@ router.post('/agents/claim', async (req: Request, res: Response) => {
                 409,
                 'CLAIM_WALLET_MISMATCH',
                 'This claim code is already associated with another wallet address.',
+            );
+        }
+
+        const activeWallet = findActiveClaimWallet(syncedAgent.id, normalizedWallet);
+        if (activeWallet) {
+            return sendError(
+                res,
+                409,
+                'CLAIM_IN_PROGRESS',
+                'Another wallet already started claiming this agent. Try again once their claim session expires.',
             );
         }
 
@@ -950,7 +1077,14 @@ router.post('/agents/claim', async (req: Request, res: Response) => {
                 handle: syncedAgent.handle,
                 name: syncedAgent.name,
             },
-            verificationText: `Claiming my AI agent @${syncedAgent.handle} on ClawdFeed Avalanche. Verification code: ${syncedAgent.verificationCode}`,
+            // The handle + the code satisfy ensureTweetContainsClaimProof's
+            // validation on their own — @clawd_hq/@CircuitsAI/hashtags are
+            // bonus reach, not required by the check, so they're safe to
+            // adjust without touching verification logic. The agent handle
+            // itself must NOT be "@"-prefixed: it's a ClawdHQ handle, not an
+            // X account, so tagging it with "@" pings whatever unrelated X
+            // account happens to own that handle.
+            verificationText: `Claiming my AI agent ${syncedAgent.handle} on @clawd_hq (built by @CircuitsAI)! Verification code: ${syncedAgent.verificationCode} #AIAgents #ClawdHQ`,
             verificationCode: syncedAgent.verificationCode,
             expiresAt,
         });
@@ -969,8 +1103,8 @@ router.post('/agents/verify-tweet', async (req: Request, res: Response) => {
             return sendError(res, 400, 'BAD_REQUEST', 'agentId, tweetUrl, and walletAddress are required');
         }
 
-        if (!isAvalancheAddress(walletAddress)) {
-            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid Avalanche address');
+        if (!isEvmAddress(walletAddress)) {
+            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid EVM address');
         }
 
         const normalizedWallet = normalizeAddress(walletAddress);
@@ -986,9 +1120,9 @@ router.post('/agents/verify-tweet', async (req: Request, res: Response) => {
             return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
         if (syncedAgent.isClaimed) {
-            return sendError(res, 409, 'ALREADY_CLAIMED', 'This agent is already claimed on Avalanche.');
+            return sendError(res, 409, 'ALREADY_CLAIMED', 'This agent is already claimed on Arc.');
         }
 
         const tweet = await fetchTweetFromUrl(String(tweetUrl));
@@ -1032,6 +1166,15 @@ router.post('/agents/verify-tweet', async (req: Request, res: Response) => {
             data: {
                 ownerAddress: normalizedWallet,
                 isVerified: true,
+                // Record who posted the proof so the profile can display the
+                // owner's X identity instead of falling back to their wallet.
+                ...(tweet.authorHandle
+                    ? {
+                        ownerXHandle: tweet.authorHandle,
+                        ownerXName: tweet.authorName,
+                        ownerXAvatar: tweet.authorAvatar,
+                    }
+                    : {}),
             },
         });
 
@@ -1048,8 +1191,8 @@ router.post('/agents/verify-tweet', async (req: Request, res: Response) => {
                 text: tweet.text,
             },
             message: reservationTxHash
-                ? 'Tweet verified and agent reserved on Avalanche Fuji. Mint the NFT to finalize the claim.'
-                : 'Tweet verified. Complete the reservation transaction in your wallet, then mint the NFT on Avalanche Fuji.',
+                ? 'Tweet verified and agent reserved on Arc Testnet. Mint the NFT to finalize the claim.'
+                : 'Tweet verified. Complete the reservation transaction in your wallet, then mint the NFT on Arc Testnet.',
             reservationTxHash,
             reservationParams,
         });
@@ -1068,8 +1211,8 @@ router.post('/agents/claim/finalize', async (req: Request, res: Response) => {
             return sendError(res, 400, 'BAD_REQUEST', 'agentId, walletAddress, and transactionHash are required');
         }
 
-        if (!isAvalancheAddress(walletAddress)) {
-            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid Avalanche address');
+        if (!isEvmAddress(walletAddress)) {
+            return sendError(res, 400, 'BAD_REQUEST', 'walletAddress must be a valid EVM address');
         }
 
         const normalizedWallet = normalizeAddress(walletAddress);
@@ -1137,9 +1280,11 @@ router.get('/agents/handles', async (_req: Request, res: Response) => {
 
 router.get('/agents', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt((req.query.limit as string) || '25', 10), 100);
+    const owner = (req.query.owner as string | undefined)?.trim();
     const agents = await prisma.agent.findMany({
         take: limit,
-        orderBy: [{ followerCount: 'desc' }, { currentScore: 'desc' }],
+        where: owner ? { ownerAddress: { equals: owner, mode: 'insensitive' } } : undefined,
+        orderBy: owner ? undefined : [{ followerCount: 'desc' }, { currentScore: 'desc' }],
     });
     sendData(res, agents.map(toAgentProfile));
 });
@@ -1207,7 +1352,7 @@ router.post('/agents/me/rotate-key', async (req: Request, res: Response) => {
         return sendError(res, 401, 'UNAUTHORIZED', 'Agent API key required');
     }
 
-    const nextApiKey = `clawdfeed_${randomBytes(24).toString('hex')}`;
+    const nextApiKey = `clawdhq_${randomBytes(24).toString('hex')}`;
     await prisma.agent.update({
         where: { id: agent.id },
         data: { apiKey: nextApiKey },
@@ -1229,7 +1374,7 @@ router.post('/agents/me/revoke-key', async (req: Request, res: Response) => {
 
     sendData(res, {
         success: true,
-        message: 'API key revocation is not persisted in Avalanche compatibility mode.',
+        message: 'API key revocation is not persisted in web compatibility mode.',
         reason: req.body?.reason,
     });
 });
@@ -1299,12 +1444,164 @@ router.get('/agents/:handle/posts', async (req: Request, res: Response) => {
     sendData(res, paginated(results.map(toPostData), hasMore ? results[results.length - 1]?.id ?? null : null, hasMore));
 });
 
-router.get('/agents/:handle/followers', async (_req: Request, res: Response) => {
-    sendData(res, paginated([], null, false));
+// Agent-to-agent follows aren't a modeled relationship (HumanFollow only
+// links HumanObserver -> Agent), so agents follow each other using their own
+// Circle/owner wallet as the HumanObserver identity. To list an agent's
+// followers as agents, cross-reference each follower wallet back to an
+// Agent row. Genuine human followers (wallet doesn't match any agent) are
+// omitted here rather than rendered with no handle/avatar.
+router.get('/agents/:handle/followers', async (req: Request, res: Response) => {
+    const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
+    if (!agent) {
+        return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
+    }
+
+    const follows = await prisma.humanFollow.findMany({
+        where: { agentId: agent.id },
+        include: { human: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+    });
+
+    const followerWallets = follows.map((f) => f.human.walletAddress.toLowerCase());
+    const followerAgents = followerWallets.length
+        ? await prisma.agent.findMany({
+            where: {
+                OR: [
+                    { circleWalletAddress: { in: followerWallets, mode: 'insensitive' } },
+                    { ownerAddress: { in: followerWallets, mode: 'insensitive' } },
+                ],
+            },
+        })
+        : [];
+
+    sendData(res, paginated(followerAgents.map(toAgentProfile), null, false));
 });
 
-router.get('/agents/:handle/following', async (_req: Request, res: Response) => {
-    sendData(res, paginated([], null, false));
+router.get('/agents/:handle/following', async (req: Request, res: Response) => {
+    const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
+    if (!agent) {
+        return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
+    }
+
+    const wallets = [agent.circleWalletAddress, agent.ownerAddress].filter((w): w is string => !!w);
+    if (wallets.length === 0) {
+        return sendData(res, paginated([], null, false));
+    }
+
+    const human = await prisma.humanObserver.findFirst({
+        where: { walletAddress: { in: wallets, mode: 'insensitive' } },
+    });
+    if (!human) {
+        return sendData(res, paginated([], null, false));
+    }
+
+    const follows = await prisma.humanFollow.findMany({
+        where: { humanId: human.id },
+        include: { agent: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+    });
+
+    sendData(res, paginated(follows.map((f) => toAgentProfile(f.agent)), null, false));
+});
+
+// GET /agents/:handle/wallet-balance — the agent's own Circle wallet native
+// USDC balance. Public: it's just a wallet address balance, same as looking
+// it up on Arcscan directly.
+router.get('/agents/:handle/wallet-balance', async (req: Request, res: Response) => {
+    const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
+    if (!agent) {
+        return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
+    }
+
+    const walletAddress = agent.circleWalletAddress || agent.ownerAddress;
+    if (!walletAddress) {
+        return sendData(res, { wallet_address: null, wallet_type: null, balance_usdc: '0' });
+    }
+
+    try {
+        const balance = await getNativeUsdcBalance(walletAddress);
+        sendData(res, {
+            wallet_address: walletAddress,
+            wallet_type: agent.walletType,
+            balance_usdc: balance,
+        });
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+// POST /agents/:handle/claim-earnings — the verified on-chain owner of a
+// claimed agent withdraws any amount from that agent's own Circle wallet to
+// their OWN connected wallet, anytime (never an arbitrary address — this
+// moves platform-custodied funds, so the destination is always the
+// authenticated owner's own wallet). Tips always settle into the agent's
+// Circle wallet regardless of claim status (see
+// nanopayments.recordSettledTip); claiming an agent does not move funds
+// automatically, it only grants the human owner withdrawal rights over the
+// wallet the agent has been accumulating tips in the whole time. Only agents
+// on a platform-custodied (CIRCLE_DEV) wallet are eligible — an EXTERNAL
+// wallet isn't something this platform can move funds out of.
+router.post('/agents/:handle/claim-earnings', async (req: Request, res: Response) => {
+    try {
+        const wallet = getWalletFromRequest(req);
+        if (!wallet) {
+            return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+        }
+
+        const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
+        if (!agent) {
+            return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
+        }
+
+        if (!agent.isClaimed || !agent.isFullyVerified) {
+            return sendError(
+                res,
+                403,
+                'NOT_CLAIMED',
+                'Only a claimed (fully verified) agent has an owner who can withdraw from its wallet.',
+            );
+        }
+
+        if (!agent.ownerAddress || normalizeAddress(agent.ownerAddress) !== normalizeAddress(wallet)) {
+            return sendError(res, 403, 'NOT_OWNER', 'Only this agent\'s verified on-chain owner can claim its earnings.');
+        }
+
+        if (agent.walletType !== 'CIRCLE_DEV' || !agent.circleWalletId) {
+            return sendError(
+                res,
+                409,
+                'EXTERNAL_WALLET',
+                'This agent uses an externally managed wallet. The platform cannot move funds out of a wallet it does not custody — withdraw using the agent\'s own external key instead.',
+            );
+        }
+
+        const amountUsdc = String(req.body?.amount_usdc || '');
+        if (!amountUsdc || Number(amountUsdc) <= 0) {
+            return sendError(res, 400, 'BAD_AMOUNT', 'amount_usdc must be a positive number.');
+        }
+
+        // Always the caller's own connected wallet — never an
+        // attacker/typo-supplied address for a transfer moving
+        // platform-custodied funds.
+        const destination = normalizeAddress(wallet);
+
+        const transfer = await transferUsdc(agent.circleWalletId, destination, amountUsdc);
+
+        sendData(res, {
+            transaction_id: transfer.transactionId,
+            state: transfer.state,
+            amount_usdc: amountUsdc,
+            destination_address: destination,
+            from_wallet: agent.circleWalletAddress,
+        });
+    } catch (error) {
+        if (error instanceof CircleWalletError) {
+            return sendError(res, error.status, error.code, error.message);
+        }
+        sendRouteError(res, error);
+    }
 });
 
 router.get('/agents/:handle', async (req: Request, res: Response) => {
@@ -1315,7 +1612,24 @@ router.get('/agents/:handle', async (req: Request, res: Response) => {
         return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
     }
 
-    sendData(res, toAgentProfile(agent));
+    const profile: Record<string, unknown> = toAgentProfile(agent);
+
+    // Surface the claim code to whoever connects the wallet this agent was
+    // registered with — not just whoever originally received the one-time
+    // register response (e.g. Circuits Protocol, for auto-launched agents).
+    // Disappears once claimed, since isClaimed flips and this block stops
+    // running — never exposed to anyone else browsing the profile.
+    if (!agent.isClaimed && agent.ownerAddress && agent.verificationCode) {
+        const wallet = getWalletFromRequest(req);
+        if (wallet && wallet.toLowerCase() === agent.ownerAddress.toLowerCase()) {
+            profile.claim = {
+                code: agent.verificationCode,
+                claim_url: buildClaimUrl(req, agent.verificationCode),
+            };
+        }
+    }
+
+    sendData(res, profile);
 });
 
 router.post('/agents/:handle/follow', async (req: Request, res: Response) => {
@@ -1338,6 +1652,18 @@ router.post('/agents/:handle/follow', async (req: Request, res: Response) => {
     await prisma.agent.update({
         where: { id: agent.id },
         data: { followerCount: { increment: 1 } },
+    }).catch(() => undefined);
+
+    // If the follower's own wallet belongs to an agent, keep that agent's
+    // followingCount in sync too, so the count matches the following list.
+    await prisma.agent.updateMany({
+        where: {
+            OR: [
+                { circleWalletAddress: { equals: human.walletAddress, mode: 'insensitive' } },
+                { ownerAddress: { equals: human.walletAddress, mode: 'insensitive' } },
+            ],
+        },
+        data: { followingCount: { increment: 1 } },
     }).catch(() => undefined);
 
     sendData(res, { followed: true });
@@ -1363,6 +1689,16 @@ router.delete('/agents/:handle/follow', async (req: Request, res: Response) => {
     await prisma.agent.update({
         where: { id: agent.id },
         data: { followerCount: { decrement: 1 } },
+    }).catch(() => undefined);
+
+    await prisma.agent.updateMany({
+        where: {
+            OR: [
+                { circleWalletAddress: { equals: human.walletAddress, mode: 'insensitive' } },
+                { ownerAddress: { equals: human.walletAddress, mode: 'insensitive' } },
+            ],
+        },
+        data: { followingCount: { decrement: 1 } },
     }).catch(() => undefined);
 
     sendData(res, { unfollowed: true });
@@ -1492,32 +1828,49 @@ router.delete('/posts/:id', async (req: Request, res: Response) => {
 
 router.post('/posts/:id/like', async (req: Request, res: Response) => {
     const human = await getHumanFromRequest(req);
+    let isNewLike = true;
+
     if (human) {
-        await prisma.interaction.create({
-            data: { humanId: human.id, postId: req.params.id, type: 'LIKE' },
-        }).catch(() => undefined);
+        try {
+            await prisma.interaction.create({
+                data: { humanId: human.id, postId: req.params.id, type: 'LIKE' },
+            });
+        } catch (error: any) {
+            if (error?.code === 'P2002') {
+                isNewLike = false;
+            } else {
+                throw error;
+            }
+        }
     }
 
-    await prisma.post.update({
-        where: { id: req.params.id },
-        data: { likeCount: { increment: 1 } },
-    });
+    if (isNewLike) {
+        await prisma.post.update({
+            where: { id: req.params.id },
+            data: { likeCount: { increment: 1 } },
+        });
+    }
 
     sendData(res, { liked: true });
 });
 
 router.delete('/posts/:id/like', async (req: Request, res: Response) => {
     const human = await getHumanFromRequest(req);
+    let didUnlike = !human;
+
     if (human) {
-        await prisma.interaction.deleteMany({
+        const { count } = await prisma.interaction.deleteMany({
             where: { humanId: human.id, postId: req.params.id, type: 'LIKE' },
         });
+        didUnlike = count > 0;
     }
 
-    await prisma.post.update({
-        where: { id: req.params.id },
-        data: { likeCount: { decrement: 1 } },
-    }).catch(() => undefined);
+    if (didUnlike) {
+        await prisma.post.update({
+            where: { id: req.params.id },
+            data: { likeCount: { decrement: 1 } },
+        }).catch(() => undefined);
+    }
 
     sendData(res, { unliked: true });
 });
@@ -1525,7 +1878,7 @@ router.delete('/posts/:id/like', async (req: Request, res: Response) => {
 router.post('/posts/:id/repost', async (req: Request, res: Response) => {
     const agent = await getAgentFromRequest(req);
     if (!agent) {
-        return sendError(res, 403, 'AGENT_ONLY', 'Only agents can repost on ClawdFeed.');
+        return sendError(res, 403, 'AGENT_ONLY', 'Only agents can repost on ClawdHQ.');
     }
 
     await prisma.post.update({
@@ -1870,7 +2223,7 @@ router.get('/subscription', async (req: Request, res: Response) => {
 });
 
 router.post('/subscription/checkout', async (_req: Request, res: Response) => {
-    const webBaseUrl = process.env.AVALANCHE_WEB_BASE_URL?.replace(/\/$/, '');
+    const webBaseUrl = (process.env.WEB_BASE_URL || process.env.AVALANCHE_WEB_BASE_URL)?.replace(/\/$/, '');
     sendData(res, { url: webBaseUrl ? `${webBaseUrl}${SUBSCRIPTION_CHECKOUT_PATH}` : SUBSCRIPTION_CHECKOUT_PATH });
 });
 
@@ -1886,7 +2239,7 @@ router.get('/subscription/invoices', async (req: Request, res: Response) => {
             id: subscription.txHash,
             amount: Number(subscription.amountUsdc),
             status: 'paid',
-            pdfUrl: `https://testnet.snowtrace.io/tx/${subscription.txHash}`,
+            pdfUrl: subscription.txHash.startsWith('0x') ? `https://testnet.arcscan.app/tx/${subscription.txHash}` : null,
             createdAt: subscription.startsAt,
         })));
     } catch (error) {
@@ -1943,32 +2296,30 @@ router.get('/humans/subscriptions', async (req: Request, res: Response) => {
     }
 });
 
-router.post('/humans/upgrade-pro', async (req: Request, res: Response) => {
-    try {
-        const verifiedSubscription = await verifySubscriptionPaymentTx({
-            txHash: String(req.body?.transactionHash || ''),
-            expectedAmountUsdc: req.body?.amountUsdc ? String(req.body.amountUsdc) : undefined,
-            expectedDurationMonths: req.body?.durationMonths ? Number(req.body.durationMonths) : undefined,
-            expectedSubscriber: getWalletFromRequest(req),
-        });
+const subscriptionAmountFromRequest = (req: Request) => {
+    if (req.body?.amountUsdc) {
+        return Number(req.body.amountUsdc);
+    }
 
-        const human = await prisma.humanObserver.upsert({
-            where: { walletAddress: verifiedSubscription.subscriber },
-            create: {
-                walletAddress: verifiedSubscription.subscriber,
-                subscriptionTier: verifiedSubscription.isActive ? 'PRO' : 'FREE',
-            },
-            update: {
-                subscriptionTier: verifiedSubscription.isActive ? 'PRO' : 'FREE',
-            },
-        });
+    const months = Math.max(Number(req.body?.durationMonths || 1), 1);
+    return months * PRO_MONTHLY_PRICE_USDC;
+};
+
+router.post('/humans/upgrade-pro', requirePayment(subscriptionAmountFromRequest), async (req: Request, res: Response) => {
+    try {
+        const payment = getSettledPayment(req);
+        if (!payment) {
+            return sendError(res, 402, 'PAYMENT_REQUIRED', 'Payment was not settled');
+        }
+
+        const record = await recordSubscriptionPayment(payment);
 
         sendData(res, {
             success: true,
             subscription: {
-                id: verifiedSubscription.txHash,
-                tier: human.subscriptionTier,
-                expiresAt: verifiedSubscription.expiresAt,
+                id: record.txRef,
+                tier: 'PRO',
+                expiresAt: record.expiresAt.toISOString(),
             },
         });
     } catch (error) {
@@ -2109,7 +2460,7 @@ router.get('/claim/:token', async (req: Request, res: Response) => {
             return sendError(res, 404, 'NOT_FOUND', 'Invalid claim token');
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
 
         sendData(res, {
             handle: syncedAgent.handle,
@@ -2133,7 +2484,7 @@ router.post('/claim/:token/verify', async (req: Request, res: Response) => {
             return sendError(res, 404, 'NOT_FOUND', 'Invalid claim token');
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
         if (syncedAgent.isClaimed) {
             return sendData(res, {
                 success: true,
@@ -2159,7 +2510,7 @@ router.post('/claim/:token/verify', async (req: Request, res: Response) => {
             res,
             409,
             'MINT_REQUIRED',
-            'Verification tweet found. Complete the Avalanche claim flow and mint the agent NFT to finish claiming.',
+            'Verification tweet found. Complete the Arc claim flow and mint the agent NFT to finish claiming.',
         );
     } catch (error) {
         sendRouteError(res, error);
@@ -2192,43 +2543,47 @@ router.get('/rankings/agent/:handle', async (req: Request, res: Response) => {
 });
 
 router.get('/rankings/:timeframe', async (req: Request, res: Response) => {
+    const requestedLimit = Number(req.query.limit);
+    const take = Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(Math.floor(requestedLimit), 100)
+        : 25;
+
     const agents = await prisma.agent.findMany({
-        take: 25,
+        take,
         orderBy: [{ currentScore: 'desc' }, { followerCount: 'desc' }],
     });
 
+    const rankedAgents = agents.map((agent, index) => ({
+        id: agent.id,
+        rank: index + 1,
+        agentId: agent.id,
+        handle: agent.handle,
+        name: agent.name,
+        bio: agent.bio,
+        avatarUrl: agent.avatarUrl,
+        isVerified: agent.isVerified,
+        isFullyVerified: agent.isFullyVerified,
+        score: agent.currentScore,
+        engagements: agent.followerCount + agent.postCount,
+        tipsUsdc: (Number(agent.totalEarnings) / 100).toFixed(2),
+        rankChange: null,
+    }));
+
+    // Two client callers read this under different keys (getRankings reads
+    // .agents, getDaily/getWeekly read .rankings) — serve both.
     sendData(res, {
         timeframe: req.params.timeframe,
-        agents: agents.map((agent, index) => ({
-            rank: index + 1,
-            agentId: agent.id,
-            handle: agent.handle,
-            name: agent.name,
-            avatarUrl: agent.avatarUrl,
-            isVerified: agent.isVerified,
-            isFullyVerified: agent.isFullyVerified,
-            score: agent.currentScore,
-            engagements: agent.followerCount + agent.postCount,
-            tipsUsdc: (Number(agent.totalEarnings) / 100).toFixed(2),
-            rankChange: null,
-        })),
+        agents: rankedAgents,
+        rankings: rankedAgents,
         updatedAt: new Date().toISOString(),
     });
 });
 
-router.post('/tips/send', async (req: Request, res: Response) => {
+router.post('/tips/send', requirePayment((req) => Number(req.body?.amount_usd || 0)), async (req: Request, res: Response) => {
     try {
         const agentHandle = req.body?.agent_handle;
-        const amountUsd = Number(req.body?.amount_usd || 0);
-        const transactionHash = String(req.body?.transaction_hash || req.body?.transactionHash || '');
-
-        if (!agentHandle || !amountUsd || !transactionHash) {
-            return sendError(
-                res,
-                400,
-                'BAD_REQUEST',
-                'agent_handle, amount_usd, and transaction_hash are required',
-            );
+        if (!agentHandle) {
+            return sendError(res, 400, 'BAD_REQUEST', 'agent_handle and amount_usd are required');
         }
 
         const agent = await prisma.agent.findUnique({ where: { handle: agentHandle } });
@@ -2236,67 +2591,53 @@ router.post('/tips/send', async (req: Request, res: Response) => {
             return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
         }
 
-        const verifiedTip = await verifyTipPaymentTx({
-            txHash: transactionHash,
-            expectedAgentId: agent.id,
-            expectedAmountUsd: amountUsd,
-            expectedWallet: getWalletFromRequest(req),
-        });
-
-        const existingTip = await prisma.tip.findUnique({
-            where: { txSignature: verifiedTip.txHash },
-        });
-
-        const tip = existingTip || await prisma.tip.create({
-            data: {
-                agentId: agent.id,
-                tipperWallet: verifiedTip.tipper,
-                amountUsd,
-                txSignature: verifiedTip.txHash,
-            },
-        });
-
-        if (!existingTip) {
-            await prisma.agent.update({
-                where: { id: agent.id },
-                data: { totalEarnings: { increment: verifiedTip.agentShareCents } },
-            });
+        const payment = getSettledPayment(req);
+        if (!payment) {
+            return sendError(res, 402, 'PAYMENT_REQUIRED', 'Payment was not settled');
         }
+
+        const { tip } = await recordSettledTip(agent, payment);
 
         sendData(res, {
             success: true,
             tip_id: tip.id,
-            amount_usd: Number(verifiedTip.amountUsdc),
+            amount_usd: microUsdcToUsd(payment.amount),
             agent_handle: agentHandle,
-            transaction_hash: verifiedTip.txHash,
+            transaction_hash: tip.txSignature,
         });
     } catch (error) {
         sendRouteError(res, error);
     }
 });
 
-router.post('/ads', async (req: Request, res: Response) => {
+const adBudgetFromRequest = (req: Request) =>
+    Number(req.body?.budgetUsdc ?? req.body?.amountUsdc ?? req.body?.budget ?? 0);
+
+async function handlePaidAdCreation(req: Request, res: Response) {
     try {
-        const verifiedAd = await verifyAdPaymentTx({
-            txHash: String(req.body?.txHash || req.body?.transactionHash || ''),
-            expectedAmountUsdc:
-                req.body?.budgetUsdc
-                    ? String(req.body.budgetUsdc)
-                    : req.body?.amountUsdc
-                        ? String(req.body.amountUsdc)
-                        : req.body?.budget
-                            ? String(req.body.budget)
-                            : undefined,
-            expectedAdvertiser: getWalletFromRequest(req),
-        });
-        const campaign = await buildStoredAd(req, verifiedAd.advertiser, verifiedAd.amountUsdc, verifiedAd.txHash, verifiedAd.timestamp);
+        const payment = getSettledPayment(req);
+        if (!payment) {
+            return sendError(res, 402, 'PAYMENT_REQUIRED', 'Payment was not settled');
+        }
+
+        const txRef = payment.transaction || `gw_${randomUUID()}`;
+        const campaign = await buildStoredAd(
+            req,
+            payment.payer,
+            microUsdcToUsd(payment.amount).toString(),
+            txRef,
+            new Date().toISOString(),
+        );
         adStore.set(campaign.id, campaign);
+        await recordAdCampaignPayment(campaign.id, { ...payment, transaction: txRef });
 
         sendData(res, campaign, 201);
     } catch (error) {
         sendRouteError(res, error);
     }
-});
+}
+
+router.post('/ads', requirePayment(adBudgetFromRequest), handlePaidAdCreation);
 
 router.get('/ads', async (req: Request, res: Response) => {
     const wallet = getWalletFromRequest(req);
@@ -2317,28 +2658,7 @@ router.get('/ads', async (req: Request, res: Response) => {
     });
 });
 
-router.post('/ads/create', async (req: Request, res: Response) => {
-    try {
-        const verifiedAd = await verifyAdPaymentTx({
-            txHash: String(req.body?.txHash || req.body?.transactionHash || ''),
-            expectedAmountUsdc:
-                req.body?.budgetUsdc
-                    ? String(req.body.budgetUsdc)
-                    : req.body?.amountUsdc
-                        ? String(req.body.amountUsdc)
-                        : req.body?.budget
-                            ? String(req.body.budget)
-                            : undefined,
-            expectedAdvertiser: getWalletFromRequest(req),
-        });
-        const campaign = await buildStoredAd(req, verifiedAd.advertiser, verifiedAd.amountUsdc, verifiedAd.txHash, verifiedAd.timestamp);
-        adStore.set(campaign.id, campaign);
-
-        sendData(res, campaign, 201);
-    } catch (error) {
-        sendRouteError(res, error);
-    }
-});
+router.post('/ads/create', requirePayment(adBudgetFromRequest), handlePaidAdCreation);
 
 router.get('/ads/campaigns', async (req: Request, res: Response) => {
     const wallet = getWalletFromRequest(req);
@@ -2526,8 +2846,8 @@ router.patch('/admin/agents/:agentId', async (req: Request, res: Response) => {
         where: { id: req.params.agentId },
         data: {
             ...(verificationTick === 'none' ? { isVerified: false, isFullyVerified: false } : {}),
-            ...(verificationTick === 'blue' ? { isVerified: true, isFullyVerified: false } : {}),
-            ...(verificationTick === 'gold' ? { isVerified: true, isFullyVerified: true } : {}),
+            ...(verificationTick === 'verified' ? { isVerified: true, isFullyVerified: false } : {}),
+            ...(verificationTick === 'claimed' ? { isVerified: true, isFullyVerified: true } : {}),
         },
     });
 
@@ -2791,32 +3111,21 @@ apiUsersRoutes.get('/users/tier', async (req: Request, res: Response) => {
     }
 });
 
-apiUsersRoutes.post('/users/upgrade-tier', async (req: Request, res: Response) => {
+apiUsersRoutes.post('/users/upgrade-tier', requirePayment(subscriptionAmountFromRequest), async (req: Request, res: Response) => {
     try {
-        const verifiedSubscription = await verifySubscriptionPaymentTx({
-            txHash: String(req.body?.txHash || req.body?.transactionHash || ''),
-            expectedAmountUsdc: req.body?.amountUsdc ? String(req.body.amountUsdc) : undefined,
-            expectedDurationMonths: req.body?.durationMonths ? Number(req.body.durationMonths) : undefined,
-            expectedSubscriber: getWalletFromRequest(req),
-        });
+        const payment = getSettledPayment(req);
+        if (!payment) {
+            return sendError(res, 402, 'PAYMENT_REQUIRED', 'Payment was not settled');
+        }
 
-        await prisma.humanObserver.upsert({
-            where: { walletAddress: verifiedSubscription.subscriber },
-            create: {
-                walletAddress: verifiedSubscription.subscriber,
-                subscriptionTier: verifiedSubscription.isActive ? 'PRO' : 'FREE',
-            },
-            update: {
-                subscriptionTier: verifiedSubscription.isActive ? 'PRO' : 'FREE',
-            },
-        });
+        const record = await recordSubscriptionPayment(payment);
 
         sendData(res, {
             success: true,
             subscription: {
-                id: verifiedSubscription.txHash,
-                tier: verifiedSubscription.isActive ? 'PRO' : 'FREE',
-                expiresAt: verifiedSubscription.expiresAt,
+                id: record.txRef,
+                tier: 'PRO',
+                expiresAt: record.expiresAt.toISOString(),
             },
         });
     } catch (error) {

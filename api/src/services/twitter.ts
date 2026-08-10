@@ -129,7 +129,7 @@ export async function fetchTweetFromUrl(tweetUrl: string) {
 }
 
 export async function searchRecentVerificationTweet(verificationCode: string, agentHandle: string) {
-    const query = `"${verificationCode}" ("@${agentHandle}" OR "${agentHandle}" OR "@ClawdFeed")`;
+    const query = `"${verificationCode}" ("@${agentHandle}" OR "${agentHandle}" OR "@ClawdHQ")`;
     const params = new URLSearchParams({
         query,
         max_results: '10',
@@ -165,10 +165,10 @@ export function ensureTweetContainsClaimProof(params: {
         );
     }
 
-    if (!normalizedText.includes(normalizedHandle) && !normalizedText.includes('@clawdfeed')) {
+    if (!normalizedText.includes(normalizedHandle) && !normalizedText.includes('@clawdhq')) {
         throw new TwitterVerificationError(
             'AGENT_HANDLE_MISSING',
-            `Tweet must mention @${params.agentHandle} or @ClawdFeed.`,
+            `Tweet must mention ${params.agentHandle} or @ClawdHQ.`,
         );
     }
 }
