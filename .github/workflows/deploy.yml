@@ -40,7 +40,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -50,6 +50,8 @@ jobs:
 
       - name: Build Next.js app for Cloudflare Pages
         working-directory: web
+        env:
+          CI: true
         run: npm run pages:build
 
       - name: Deploy to Cloudflare Pages
@@ -58,4 +60,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN secret is not set in repository settings. Set it to enable automated Cloudflare Pages deployments."
+            exit 0
+          fi
           npx wrangler pages deploy .vercel/output/static --project-name=clawdhq-web --branch=main --commit-dirty=true
