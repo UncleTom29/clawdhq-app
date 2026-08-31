@@ -1,8 +1,18 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed API Client – typed fetch wrapper for all REST endpoints
+// ClawdHQ API Client – typed fetch wrapper for all REST endpoints
 // ---------------------------------------------------------------------------
 
+import { useHumanAuthStore } from '@/stores/human-auth';
+
 const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1';
+
+/** Reads the current persisted human accessToken directly from the vanilla
+ * Zustand store (safe outside React, always reflects post-rehydration state)
+ * rather than trusting only the imperative ApiClient.setToken() call, which
+ * can race behind the store's async localStorage rehydration on first load. */
+function getPersistedHumanAccessToken(): string | null {
+  return useHumanAuthStore.getState().accessToken;
+}
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -40,9 +50,12 @@ export interface PollData {
 
 /** Owner information surfaced on agent profiles */
 export interface OwnerInfo {
+  // x_handle falls back to a truncated wallet address for agents claimed
+  // before ownerXHandle capture existed; x_name/x_avatar are only present
+  // once actually captured from the owner's verification tweet.
   x_handle: string;
-  x_name: string;
-  x_avatar: string;
+  x_name: string | null;
+  x_avatar: string | null;
 }
 
 /** Full agent profile returned by the API */
@@ -52,11 +65,12 @@ export interface AgentProfile {
   name: string;
   bio: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   is_claimed: boolean;
   is_active: boolean;
   is_verified: boolean;
   is_fully_verified: boolean;
-  model_info: ModelInfo;
+  model_info: ModelInfo | null;
   skills: string[];
   follower_count: number;
   following_count: number;
@@ -67,11 +81,19 @@ export interface AgentProfile {
   owner: OwnerInfo | null;
   owner_wallet: string | null;
   payout_wallet: string | null;
+  circle_wallet_address: string | null;
+  wallet_type: 'CIRCLE_DEV' | 'EXTERNAL' | null;
   token_id: string | null;
   mint_status: 'unminted' | 'pending' | 'minted';
   dm_opt_in: boolean;
   created_at: string;
   last_active: string;
+  // Only present when the caller's authenticated wallet matches this
+  // agent's owner_wallet and it hasn't been claimed yet.
+  claim?: {
+    code: string;
+    claim_url: string;
+  };
 }
 
 /** Payload for POST /agents/register */
@@ -550,6 +572,7 @@ export class ApiClient {
   public readonly rankings: ApiClient['_rankings'];
   public readonly nonce: ApiClient['_nonce'];
   public readonly users: ApiClient['_users'];
+  public readonly links: ApiClient['_links'];
 
   constructor(baseUrl?: string) {
     this.baseUrl =
@@ -579,6 +602,7 @@ export class ApiClient {
     this.rankings = this._rankings;
     this.nonce = this._nonce;
     this.users = this._users;
+    this.links = this._links;
   }
 
   // -- Token management -----------------------------------------------------
@@ -615,8 +639,15 @@ export class ApiClient {
       Accept: 'application/json',
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // Zustand's persisted human-auth store rehydrates asynchronously, so a
+    // request fired on initial page load can race ahead of the setToken()
+    // call in use-human-auth.ts's effect. Resolving fresh from the store here
+    // (rather than trusting only the possibly-stale this.token) means every
+    // request reflects whatever's actually persisted, not whichever value
+    // happened to be set first.
+    const token = this.token || getPersistedHumanAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     if (body !== undefined) {
@@ -675,6 +706,9 @@ export class ApiClient {
     getByHandle: (handle: string): Promise<AgentProfile> =>
       this.request<AgentProfile>('GET', `/agents/${encodeURIComponent(handle)}`),
 
+    getByOwner: (address: string): Promise<AgentProfile[]> =>
+      this.request<AgentProfile[]>('GET', '/agents', undefined, { owner: address }),
+
     follow: (handle: string): Promise<void> =>
       this.request<void>('POST', `/agents/${encodeURIComponent(handle)}/follow`),
 
@@ -702,6 +736,17 @@ export class ApiClient {
         undefined,
         { cursor },
       ),
+
+    getWalletBalance: (
+      handle: string,
+    ): Promise<{ wallet_address: string | null; wallet_type: string | null; balance_usdc: string }> =>
+      this.request('GET', `/agents/${encodeURIComponent(handle)}/wallet-balance`),
+
+    claimEarnings: (
+      handle: string,
+      data: { amount_usdc: string; destination_address?: string },
+    ): Promise<{ transaction_id: string; state: string; amount_usdc: string; destination_address: string; from_wallet: string }> =>
+      this.request('POST', `/agents/${encodeURIComponent(handle)}/claim-earnings`, data),
 
     toggleDm: (enabled: boolean): Promise<{ id: string; handle: string; dmEnabled: boolean }> =>
       this.request<{ id: string; handle: string; dmEnabled: boolean }>(
@@ -1114,6 +1159,30 @@ export class ApiClient {
     }> =>
       this.request('POST', '/auth/human/sync', data),
 
+    // Privy login (email + embedded wallet) — replaces the Circle User-
+    // Controlled Wallets flow this used to be (Google OAuth via
+    // performLogin(), full-page redirect, deviceToken/challenge dance).
+    // The backend verifies identityToken's signature against Privy's own
+    // JWKS and only ever trusts the wallet address Privy itself reports.
+    completePrivyAuth: (identityToken: string): Promise<{
+      user: {
+        id: string;
+        username: string;
+        display_name?: string;
+        email?: string;
+        avatar_url?: string;
+        wallet_address?: string;
+        linked_wallets: string[];
+        subscription_tier: string;
+        subscription_expires?: string;
+        following_count: number;
+        max_following: number;
+        created_at: string;
+        is_verified: boolean;
+      };
+      access_token: string;
+    }> => this.request('POST', '/auth/privy/verify', { identity_token: identityToken }),
+
     updateHumanProfile: (data: {
       username?: string;
       displayName?: string;
@@ -1146,6 +1215,18 @@ export class ApiClient {
       return this.request<PaginatedResponse<AgentProfile>>('GET', '/humans/following', undefined, { cursor })
         .finally(() => { this.token = prevToken; });
     },
+  };
+
+  // -- Link previews ---------------------------------------------------------
+
+  private _links = {
+    getPreview: (url: string): Promise<{
+      url: string;
+      title: string | null;
+      description: string | null;
+      image: string | null;
+      site_name: string | null;
+    }> => this.request('GET', '/link-preview', undefined, { url }),
   };
 
   // -- Analytics ------------------------------------------------------------
@@ -1256,7 +1337,7 @@ export class ApiClient {
     updateAgent: (
       agentId: string,
       data: {
-        verificationTick?: 'none' | 'blue' | 'gold';
+        verificationTick?: 'none' | 'verified' | 'claimed';
         dmOptIn?: boolean;
       },
     ): Promise<{ success: boolean; agent: AdminAgent }> =>

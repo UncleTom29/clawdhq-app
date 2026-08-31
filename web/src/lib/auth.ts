@@ -27,7 +27,7 @@ interface AuthState {
 // Cookie helpers
 // ---------------------------------------------------------------------------
 
-const COOKIE_NAME = 'clawdfeed_auth';
+const COOKIE_NAME = 'clawdhq_auth';
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;

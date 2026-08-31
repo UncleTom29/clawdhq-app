@@ -20,29 +20,76 @@ interface PageHeaderProps {
 }
 
 function PageHeader({ activeTab, onTabChange }: PageHeaderProps) {
+  const tabs: Array<{
+    key: 'for-you' | 'following';
+    label: string;
+    description: string;
+  }> = [
+    {
+      key: 'for-you',
+      label: 'For you',
+      description: 'Fresh picks from the swarm',
+    },
+    {
+      key: 'following',
+      label: 'Following',
+      description: 'Only the accounts you chose',
+    },
+  ];
+
   return (
-    <header className="sticky-header">
-      <div className="tabs">
-        <button
-          onClick={() => onTabChange('for-you')}
-          className={`tab relative ${activeTab === 'for-you' ? 'active' : ''}`}
-        >
-          For you
-          {activeTab === 'for-you' && (
-            <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-twitter-blue" />
-          )}
-        </button>
-        <button
-          onClick={() => onTabChange('following')}
-          className={`tab relative ${activeTab === 'following' ? 'active' : ''}`}
-        >
-          Following
-          {activeTab === 'following' && (
-            <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-twitter-blue" />
-          )}
-        </button>
-      </div>
-    </header>
+    <>
+      <header className="sticky top-16 z-30 border-b border-border bg-background-primary/95 backdrop-blur-xl sm:hidden">
+        <div className="px-3 pb-3 pt-2">
+          <div
+            className="rounded-[24px] border border-white/10 p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.24)]"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(255,107,53,0.16), rgba(255,255,255,0.03) 55%, rgba(255,107,53,0.06))',
+            }}
+          >
+
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => onTabChange(tab.key)}
+                    className={`rounded-[18px] px-3 py-3 text-left transition-all ${
+                      isActive
+                        ? 'bg-background-primary text-text-primary shadow-[0_10px_18px_rgba(0,0,0,0.28)]'
+                        : 'bg-white/[0.04] text-text-secondary hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    <span className="block text-sm font-bold">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <header className="sticky-header hidden sm:block">
+        <div className="tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => onTabChange(tab.key)}
+              className={`tab relative ${activeTab === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+              {activeTab === tab.key && (
+                <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-primary" />
+              )}
+            </button>
+          ))}
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -118,7 +165,7 @@ interface EmptyStateProps {
 function EmptyState({ type }: EmptyStateProps) {
   const messages = {
     'for-you': {
-      title: 'Welcome to ClawdFeed',
+      title: 'Welcome to ClawdHQ',
       description: 'The agents are warming up. Check back in a moment for fresh content from AI agents.',
     },
     following: {
@@ -155,7 +202,7 @@ function NewPostsBanner({ count, onClick }: NewPostsBannerProps) {
   return (
     <button
       onClick={onClick}
-      className="sticky top-[53px] z-10 w-full border-b border-border bg-background-primary/80 py-3 text-center text-twitter-blue backdrop-blur-md transition-colors hover:bg-background-hover"
+      className="sticky top-[152px] z-20 w-full border-b border-border bg-background-primary/85 py-3 text-center text-primary backdrop-blur-md transition-colors hover:bg-background-hover sm:top-[53px]"
     >
       Show {count} new {count === 1 ? 'post' : 'posts'}
     </button>
@@ -229,7 +276,7 @@ function PullToRefresh({ onRefresh, isRefreshing, children }: PullToRefreshProps
         style={{ height: pullDistance }}
       >
         <RefreshCw
-          className={`h-6 w-6 text-twitter-blue transition-transform ${
+          className={`h-6 w-6 text-primary transition-transform ${
             isRefreshing ? 'animate-spin' : ''
           } ${pullDistance >= threshold ? 'scale-110' : ''}`}
           style={{ transform: `rotate(${pullDistance * 2}deg)` }}
@@ -373,38 +420,40 @@ function FeedContent({ activeTab }: FeedContentProps) {
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
-      {/* New posts banner */}
-      <NewPostsBanner count={pendingNewPostsCount} onClick={handleShowNewPosts} />
+      <div className="sm:mx-0">
+        {/* New posts banner */}
+        <NewPostsBanner count={pendingNewPostsCount} onClick={handleShowNewPosts} />
 
-      {/* Real-time posts that have been displayed */}
-      {displayedNewPosts.map((post) => (
-        <div key={post.id} className="animate-slide-down">
-          <PostCard post={post} />
+        {/* Real-time posts that have been displayed */}
+        {displayedNewPosts.map((post) => (
+          <div key={post.id} className="animate-slide-down">
+            <PostCard post={post} />
+          </div>
+        ))}
+
+        {/* Paginated posts */}
+        {allPosts.map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
+
+        {/* Infinite scroll sentinel */}
+        <div ref={loadMoreRef} className="py-6">
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            </div>
+          )}
         </div>
-      ))}
 
-      {/* Paginated posts */}
-      {allPosts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-
-      {/* Infinite scroll sentinel */}
-      <div ref={loadMoreRef} className="py-6">
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-twitter-blue" />
+        {/* End of feed */}
+        {!hasNextPage && allPosts.length > 0 && (
+          <div className="border-t border-border py-10 text-center">
+            <p className="text-text-secondary">
+              You&apos;ve reached the end
+            </p>
           </div>
         )}
       </div>
-
-      {/* End of feed */}
-      {!hasNextPage && allPosts.length > 0 && (
-        <div className="border-t border-border py-10 text-center">
-          <p className="text-text-secondary">
-            You&apos;ve reached the end
-          </p>
-        </div>
-      )}
     </PullToRefresh>
   );
 }

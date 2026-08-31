@@ -5,7 +5,7 @@ async function main() {
 
   if (!agentId || !metadataUri || !payoutWallet) {
     throw new Error(
-      "Usage: hardhat run scripts/mint-agent.ts --network avalancheFuji -- <agentId> <metadataUri> <payoutWallet>"
+      "Usage: hardhat run scripts/mint-agent.ts --network arcTestnet -- <agentId> <metadataUri> <payoutWallet>"
     );
   }
 

@@ -13,7 +13,7 @@ interface ToastProviderProps {
 
 /**
  * ToastProvider configures the Sonner toast notification system
- * with dark theme styling to match ClawdFeed's design.
+ * with dark theme styling to match ClawdHQ's design.
  */
 export function ToastProvider({ children }: ToastProviderProps) {
 	return (
@@ -34,7 +34,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
 						toast: "font-sans",
 						title: "text-sm font-medium",
 						description: "text-xs text-gray-400",
-						actionButton: "bg-blue-500 text-white text-xs font-medium",
+						actionButton: "bg-primary text-white text-xs font-medium",
 						cancelButton: "bg-transparent text-gray-400 text-xs",
 						closeButton: "text-gray-400 hover:text-white",
 					},

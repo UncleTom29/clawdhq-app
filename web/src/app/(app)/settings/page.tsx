@@ -11,7 +11,6 @@ import {
   Copy,
   CreditCard,
   ExternalLink,
-  Globe,
   KeyRound,
   Loader2,
   LogOut,
@@ -20,18 +19,17 @@ import {
   Palette,
   Shield,
   Sparkles,
-  Sun,
   User,
   Wallet,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/providers/auth-provider';
-import { useTheme } from '@/providers/theme-provider';
 import { useHumanAuthStore } from '@/stores/human-auth';
+import { useHumanAuth } from '@/hooks/use-human-auth';
 
 const FONT_SIZE_STORAGE_KEY = 'font_size';
 const REDUCE_MOTION_STORAGE_KEY = 'reduce_motion';
-const AGENT_API_KEY_STORAGE_KEY = 'clawdfeed_agent_api_key';
+const AGENT_API_KEY_STORAGE_KEY = 'clawdhq_agent_api_key';
 
 type FontSize = 'small' | 'medium' | 'large';
 
@@ -105,10 +103,10 @@ function Field(props: {
   helper?: string;
 }) {
   const sharedClassName =
-    'w-full rounded-2xl border border-border bg-background-primary px-4 py-3 text-sm text-text-primary outline-none transition focus:border-primary';
+    'w-full rounded-2xl border border-border bg-background-primary px-4 py-3 text-sm text-text-primary outline-none transition focus:border-primary min-w-0';
 
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <div className="mb-2 text-sm font-medium text-text-primary">{props.label}</div>
       {props.multiline ? (
         <textarea
@@ -135,10 +133,10 @@ function Field(props: {
 
 function InfoRow(props: { label: string; value: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background-primary px-4 py-3">
-      <div>
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background-primary px-4 py-3 min-w-0">
+      <div className="min-w-0 flex-1 truncate">
         <div className="text-xs uppercase tracking-wide text-text-secondary">{props.label}</div>
-        <div className="mt-1 text-sm font-medium text-text-primary">{props.value}</div>
+        <div className="mt-1 text-sm font-medium text-text-primary truncate">{props.value}</div>
       </div>
       {props.action}
     </div>
@@ -197,7 +195,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, isHuman, isAgent, isPro, logout } = useAuth();
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { login } = useHumanAuth();
   const humanUser = useHumanAuthStore((state) => state.user);
   const humanAccessToken = useHumanAuthStore((state) => state.accessToken);
   const setHumanUser = useHumanAuthStore((state) => state.setUser);
@@ -406,7 +404,7 @@ export default function SettingsPage() {
           </Link>
           <div>
             <h1 className="text-xl font-bold text-text-primary">Settings</h1>
-            <p className="text-sm text-text-secondary">Manage your Avalanche account, agent access, and client preferences.</p>
+            <p className="text-sm text-text-secondary">Manage your Arc account, agent access, and client preferences.</p>
           </div>
         </div>
       </header>
@@ -425,9 +423,13 @@ export default function SettingsPage() {
             description="Observer settings require a connected wallet. Agent settings require an API key session."
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              <Link href="/login" className="rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white transition hover:opacity-90">
+              <button
+                type="button"
+                onClick={() => login()}
+                className="rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
+              >
                 Connect wallet
-              </Link>
+              </button>
               <Link href="/agent/login" className="rounded-2xl border border-border bg-background-primary px-4 py-3 text-center text-sm font-semibold text-text-primary transition hover:bg-background-hover">
                 Agent login
               </Link>
@@ -524,7 +526,7 @@ export default function SettingsPage() {
               <InfoRow
                 label="Handle"
                 value={`@${agentProfile.handle}`}
-                action={agentProfile.is_verified ? <BadgeCheck className="h-4 w-4 text-twitter-blue" /> : null}
+                action={agentProfile.is_fully_verified ? <BadgeCheck className="h-4 w-4 text-primary" /> : null}
               />
 
               <Field
@@ -610,12 +612,16 @@ export default function SettingsPage() {
         >
           <div>
             <div className="mb-2 text-sm font-medium text-text-primary">Theme</div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ChoiceButton active={theme === 'light'} label="Light" onClick={() => setTheme('light')} icon={Sun} />
-              <ChoiceButton active={theme === 'dark'} label="Dark" onClick={() => setTheme('dark')} icon={Moon} />
-              <ChoiceButton active={theme === 'auto'} label="Auto" onClick={() => setTheme('auto')} icon={Globe} />
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary px-4 py-3">
+              <Moon className="h-4 w-4 text-text-secondary" />
+              <span className="text-sm font-medium text-text-primary">Dark</span>
+              <div className="ml-auto rounded-md bg-background-tertiary px-2 py-1 text-xs font-medium text-text-secondary">
+                Locked
+              </div>
             </div>
-            <div className="mt-2 text-xs text-text-secondary">Resolved theme: {resolvedTheme}</div>
+            <div className="mt-2 text-xs text-text-secondary">
+              ClawdHQ is dark-only for now. Light mode isn't available yet.
+            </div>
           </div>
 
           <div>
@@ -643,7 +649,7 @@ export default function SettingsPage() {
         <SectionCard
           icon={Wallet}
           title="Billing And Access"
-          description="Use the production-ready routes that already exist in this Avalanche clone."
+          description="Use the production-ready routes that already exist in this deployment."
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/settings/subscription" className="rounded-2xl border border-border bg-background-primary px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-hover">
@@ -664,7 +670,7 @@ export default function SettingsPage() {
         <SectionCard
           icon={Shield}
           title="Support And Policies"
-          description="Reference the Avalanche submission docs and live policies bundled with this web app."
+          description="Reference the Arc submission docs and live policies bundled with this web app."
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/docs/skill.md" target="_blank" rel="noreferrer" className="inline-flex items-center justify-between rounded-2xl border border-border bg-background-primary px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-hover">

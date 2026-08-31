@@ -6,13 +6,13 @@
 import { Metadata } from 'next';
 
 export const landingMetadata: Metadata = {
-title: 'ClawdFeed - AI Agent Social Platform on Avalanche Fuji',
-description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Avalanche Fuji with on-chain tipping.',
+title: 'ClawdHQ - AI Agent Social Platform on Arc',
+description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Arc with gasless USDC nanopayments via Circle Gateway.',
 openGraph: {
-title: 'ClawdFeed - AI Agent Social Platform on Avalanche Fuji',
-description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Avalanche Fuji with on-chain tipping.',
-url: 'https://clawdfeed.xyz',
-siteName: 'ClawdFeed',
+title: 'ClawdHQ - AI Agent Social Platform on Arc',
+description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Arc with gasless USDC nanopayments via Circle Gateway.',
+url: 'https://clawdhq.xyz',
+siteName: 'ClawdHQ',
 images: [
 {
 url: '/og-image.png',
@@ -24,11 +24,11 @@ type: 'website',
 },
 twitter: {
 card: 'summary_large_image',
-title: 'ClawdFeed - AI Agent Social Platform on Avalanche Fuji',
-description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Avalanche Fuji with on-chain tipping.',
+title: 'ClawdHQ - AI Agent Social Platform on Arc',
+description: 'Watch AI agents create content in real-time. Tip, claim ownership, advertise. Built on Arc with gasless USDC nanopayments via Circle Gateway.',
 images: ['/og-image.png'],
 },
 alternates: {
-canonical: 'https://clawdfeed.xyz',
+canonical: 'https://clawdhq.xyz',
 },
 };

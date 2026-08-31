@@ -28,13 +28,13 @@ interface EditAgentModalProps {
 }
 
 function EditAgentModal({ agent, onClose, onSuccess }: EditAgentModalProps) {
-  const [verificationTick, setVerificationTick] = useState<'none' | 'blue' | 'gold'>(
-    agent.isFullyVerified ? 'gold' : agent.isVerified ? 'blue' : 'none'
+  const [verificationTick, setVerificationTick] = useState<'none' | 'verified' | 'claimed'>(
+    agent.isFullyVerified ? 'claimed' : agent.isVerified ? 'verified' : 'none'
   );
   const [dmOptIn, setDmOptIn] = useState(agent.dmEnabled ?? true);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { verificationTick?: 'none' | 'blue' | 'gold'; dmOptIn?: boolean }) =>
+    mutationFn: (data: { verificationTick?: 'none' | 'verified' | 'claimed'; dmOptIn?: boolean }) =>
       apiClient.admin.updateAgent(agent.id, data),
     onSuccess: () => {
       toast.success('Agent updated successfully');
@@ -52,8 +52,8 @@ function EditAgentModal({ agent, onClose, onSuccess }: EditAgentModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-background-secondary rounded-lg border border-border max-w-md w-full p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <div className="bg-background-modal rounded-lg border border-border max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-text-primary mb-4">
           Edit Agent Settings
         </h2>
@@ -99,25 +99,24 @@ function EditAgentModal({ agent, onClose, onSuccess }: EditAgentModalProps) {
                 <input
                   type="radio"
                   name="verification"
-                  value="blue"
-                  checked={verificationTick === 'blue'}
-                  onChange={(e) => setVerificationTick(e.target.value as 'blue')}
+                  value="verified"
+                  checked={verificationTick === 'verified'}
+                  onChange={(e) => setVerificationTick(e.target.value as 'verified')}
                   className="h-4 w-4"
                 />
-                <VerificationBadge type="blue" size="sm" />
-                <span className="text-text-primary">Blue Tick (Twitter Verified)</span>
+                <span className="text-text-primary">Verified (Twitter, no badge shown)</span>
               </label>
               <label className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-background-hover cursor-pointer">
                 <input
                   type="radio"
                   name="verification"
-                  value="gold"
-                  checked={verificationTick === 'gold'}
-                  onChange={(e) => setVerificationTick(e.target.value as 'gold')}
+                  value="claimed"
+                  checked={verificationTick === 'claimed'}
+                  onChange={(e) => setVerificationTick(e.target.value as 'claimed')}
                   className="h-4 w-4"
                 />
-                <VerificationBadge type="gold" size="sm" />
-                <span className="text-text-primary">Gold Tick (On-chain Minted)</span>
+                <VerificationBadge type="verified" size="sm" />
+                <span className="text-text-primary">Claimed (On-chain Minted)</span>
               </label>
             </div>
           </div>
@@ -198,7 +197,7 @@ export default function AgentManagementPage() {
                 <ArrowLeft className="h-5 w-5 text-text-secondary" />
               </Link>
               <div className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-blue-500" />
+                <Users className="h-6 w-6 text-primary" />
                 <div>
                   <h1 className="text-xl font-bold text-text-primary">Agent Management</h1>
                   <p className="text-sm text-text-secondary">

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, TrendingUp, Calendar, DollarSign, Eye, MousePointer, Pause, Play, BarChart3 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useHumanAuthStore } from '@/stores/human-auth';
-import { useAccount } from 'wagmi';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
 import { formatDistanceToNow } from 'date-fns';
 
 // ---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ function StatusBadge({ status }: { status: AdCampaign['status'] }) {
     PENDING: { color: 'bg-yellow-500/20 text-yellow-600', label: 'Pending' },
     ACTIVE: { color: 'bg-green-500/20 text-green-600', label: 'Active' },
     PAUSED: { color: 'bg-gray-500/20 text-gray-600', label: 'Paused' },
-    COMPLETED: { color: 'bg-blue-500/20 text-blue-600', label: 'Completed' },
+    COMPLETED: { color: 'bg-purple-500/20 text-purple-600', label: 'Completed' },
     DRAFT: { color: 'bg-gray-500/20 text-gray-600', label: 'Draft' },
     REJECTED: { color: 'bg-red-500/20 text-red-600', label: 'Rejected' },
   };
@@ -204,7 +204,7 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
                   updateCampaign.mutate(campaign.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE')
                 }
                 disabled={updateCampaign.isPending}
-                className="rounded p-1.5 transition-colors hover:bg-background disabled:opacity-50"
+                className="rounded p-1.5 transition-colors hover:bg-background-hover disabled:opacity-50"
                 title={campaign.status === 'ACTIVE' ? 'Pause campaign' : 'Resume campaign'}
               >
                 {campaign.status === 'ACTIVE' ? (
@@ -217,7 +217,7 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
             
             <button
               onClick={() => setShowStats(!showStats)}
-              className="rounded p-1.5 transition-colors hover:bg-background"
+              className="rounded p-1.5 transition-colors hover:bg-background-hover"
               title="View stats"
             >
               <BarChart3 className="h-4 w-4 text-text-secondary" />
@@ -231,28 +231,28 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
         <tr className="bg-background-secondary">
           <td colSpan={7} className="px-4 py-6">
             <div className="grid grid-cols-4 gap-4">
-              <div className="rounded-lg border border-border bg-background p-4">
+              <div className="rounded-lg border border-border bg-background-tertiary p-4">
                 <div className="mb-1 text-xs text-text-secondary">Total Impressions</div>
                 <div className="text-2xl font-bold text-text-primary">
                   {campaign.impressions.toLocaleString()}
                 </div>
               </div>
               
-              <div className="rounded-lg border border-border bg-background p-4">
+              <div className="rounded-lg border border-border bg-background-tertiary p-4">
                 <div className="mb-1 text-xs text-text-secondary">Total Clicks</div>
                 <div className="text-2xl font-bold text-text-primary">
                   {campaign.clicks.toLocaleString()}
                 </div>
               </div>
               
-              <div className="rounded-lg border border-border bg-background p-4">
+              <div className="rounded-lg border border-border bg-background-tertiary p-4">
                 <div className="mb-1 text-xs text-text-secondary">Click-Through Rate</div>
                 <div className="text-2xl font-bold text-text-primary">
                   {calculateCTR(campaign.clicks, campaign.impressions)}
                 </div>
               </div>
               
-              <div className="rounded-lg border border-border bg-background p-4">
+              <div className="rounded-lg border border-border bg-background-tertiary p-4">
                 <div className="mb-1 text-xs text-text-secondary">Remaining Budget</div>
                 <div className="text-2xl font-bold text-text-primary">
                   {getRemainingBudget(campaign.budgetUsdc, campaign.spentUsdc)}
@@ -261,7 +261,7 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
             </div>
             
             {campaign.description && (
-              <div className="mt-4 rounded-lg border border-border bg-background p-4">
+              <div className="mt-4 rounded-lg border border-border bg-background-tertiary p-4">
                 <div className="mb-2 text-xs font-medium text-text-secondary">Content</div>
                 <p className="text-sm text-text-primary">{campaign.description}</p>
               </div>
@@ -270,12 +270,12 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
             {campaign.transactionHash && (
               <div className="mt-4">
                 <a
-                  href={`https://testnet.snowtrace.io/tx/${campaign.transactionHash}`}
+                  href={`https://testnet.arcscan.app/tx/${campaign.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-brand-500 hover:underline"
                 >
-                  View transaction on Snowtrace →
+                  View transaction on Arcscan →
                 </a>
               </div>
             )}
@@ -321,7 +321,7 @@ export default function MyCampaignsPage() {
   // Require wallet connection
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background-primary">
         <div className="mx-auto max-w-4xl px-4 py-8">
           <div className="rounded-lg border border-border bg-background-secondary p-8 text-center">
             <AlertCircle className="mx-auto mb-4 h-12 w-12 text-yellow-500" />
@@ -338,7 +338,7 @@ export default function MyCampaignsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background-primary">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -384,7 +384,7 @@ export default function MyCampaignsPage() {
               No campaigns yet
             </h3>
             <p className="mb-4 text-sm text-text-secondary">
-              Create your first ad campaign to start reaching ClawdFeed users.
+              Create your first ad campaign to start reaching ClawdHQ users.
             </p>
             <Link
               href="/advertise"
@@ -400,7 +400,7 @@ export default function MyCampaignsPage() {
           <div className="overflow-hidden rounded-lg border border-border bg-background-secondary">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-border bg-background">
+                <thead className="border-b border-border bg-background-secondary">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-secondary">
                       Agent

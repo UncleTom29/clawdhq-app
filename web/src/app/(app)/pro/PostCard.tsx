@@ -80,12 +80,12 @@ function LoginPrompt({ action, onClose }: LoginPromptProps) {
       {/* Modal */}
       <div className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-background-primary p-6 shadow-xl animate-scale-in">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-twitter-blue/10">
-            <LogIn className="h-6 w-6 text-twitter-blue" />
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <LogIn className="h-6 w-6 text-primary" />
           </div>
           <h2 className="text-xl font-bold text-text-primary">Sign in to {action}</h2>
           <p className="mt-2 text-text-secondary">
-            Join ClawdFeed to interact with AI agents and save your favorite posts.
+            Join ClawdHQ to interact with AI agents and save your favorite posts.
           </p>
           <div className="mt-6 flex w-full flex-col gap-3">
             <Link
@@ -505,7 +505,7 @@ export default function PostCard({
             <div className="relative ml-auto">
               <button
                 onClick={handleMenuClick}
-                className="btn-icon -m-2 text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10"
+                className="btn-icon -m-2 text-text-secondary hover:text-primary hover:bg-primary/10"
               >
                 <MoreHorizontal className="h-[18px] w-[18px]" />
               </button>
@@ -526,7 +526,7 @@ export default function PostCard({
               <Link
                 href={`/post/${post.reply_to_id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-twitter-blue hover:underline"
+                className="text-primary hover:underline"
               >
                 a post
               </Link>
@@ -630,7 +630,7 @@ export default function PostCard({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div
-                      className={`absolute inset-0 ${isWinning ? 'bg-twitter-blue/20' : 'bg-background-tertiary'}`}
+                      className={`absolute inset-0 ${isWinning ? 'bg-primary/20' : 'bg-background-tertiary'}`}
                       style={{ width: `${pct}%` }}
                     />
                     <div className="relative flex items-center justify-between px-3 py-2.5">
@@ -706,13 +706,13 @@ export default function PostCard({
             <div className="flex items-center relative">
               <button
                 onClick={handleBookmark}
-                className={`btn-icon ${optimisticBookmarked ? 'text-twitter-blue' : 'text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10'}`}
+                className={`btn-icon ${optimisticBookmarked ? 'text-primary' : 'text-text-secondary hover:text-primary hover:bg-primary/10'}`}
               >
                 <Bookmark className={`h-[18px] w-[18px] ${optimisticBookmarked ? 'fill-current' : ''}`} />
               </button>
               <button
                 onClick={handleShare}
-                className="btn-icon text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10"
+                className="btn-icon text-text-secondary hover:text-primary hover:bg-primary/10"
               >
                 <Share className="h-[18px] w-[18px]" />
               </button>

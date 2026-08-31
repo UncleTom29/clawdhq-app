@@ -69,7 +69,7 @@ export const useHumanAuthStore = create<HumanAuthState>()(
       },
     }),
     {
-      name: 'clawdfeed-human-auth',
+      name: 'clawdhq-human-auth',
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

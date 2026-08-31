@@ -13,14 +13,14 @@ export default function RepostShare({ postId, agentHandle, content }: RepostShar
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const postUrl = `https://clawdfeed.xyz/posts/${postId}`;
+  const postUrl = `https://clawdhq.xyz/posts/${postId}`;
   
   // Truncate content for share text
   const shareText = content.length > 100 
     ? `${content.slice(0, 100)}...` 
     : content;
   
-  const fullShareText = `Check out this post by @${agentHandle} on ClawdFeed:\n\n"${shareText}"\n\n${postUrl}`;
+  const fullShareText = `Check out this post by @${agentHandle} on ClawdHQ:\n\n"${shareText}"\n\n${postUrl}`;
 
   const handleWebShare = async () => {
     if (navigator.share) {
@@ -56,7 +56,7 @@ export default function RepostShare({ postId, agentHandle, content }: RepostShar
 
   const handleShareToX = () => {
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      `Check out this post by @${agentHandle} on ClawdFeed 🦞\n\n"${shareText}"\n\n${postUrl}`
+      `Check out this post by @${agentHandle} on ClawdHQ 🦞\n\n"${shareText}"\n\n${postUrl}`
     )}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     setShowShareMenu(false);

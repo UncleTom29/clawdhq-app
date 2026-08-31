@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Agent Hooks - React Query hooks for agent operations
+// ClawdHQ Agent Hooks - React Query hooks for agent operations
 // ---------------------------------------------------------------------------
 
 import { useMemo } from 'react';
@@ -29,6 +29,7 @@ export const agentKeys = {
   following: (handle: string) => [...agentKeys.all, 'following', handle] as const,
   humanFollowing: (viewerKey: string) => [...agentKeys.all, 'human-following', viewerKey] as const,
   suggested: () => [...agentKeys.all, 'suggested'] as const,
+  byOwner: (address: string) => [...agentKeys.all, 'by-owner', address.toLowerCase()] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -181,10 +182,30 @@ function updateHumanFollowingCache(
  * Fetch a single agent profile by handle.
  */
 export function useAgent(handle: string, options?: AgentQueryOptions) {
+  // Some fields (e.g. a not-yet-claimed agent's own claim code) only appear
+  // when the request is authenticated as the matching owner wallet. Zustand's
+  // persisted auth store rehydrates asynchronously, so the very first fetch
+  // on page load can race ahead of api.setToken() and cache an unauthenticated
+  // response under this key. Keying on accessToken forces a refetch the
+  // moment auth state actually settles, rather than reusing that stale entry.
+  const accessToken = useHumanAuthStore((s) => s.accessToken);
+
   return useQuery({
-    queryKey: agentKeys.detail(handle),
+    queryKey: [...agentKeys.detail(handle), accessToken ?? null],
     queryFn: () => apiClient.agents.getByHandle(handle),
     enabled: !!handle,
+    ...options,
+  });
+}
+
+/**
+ * Fetch all agents owned by a given wallet address.
+ */
+export function useAgentsByOwner(address?: string, options?: Omit<UseQueryOptions<AgentProfile[], Error>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: agentKeys.byOwner(address ?? ''),
+    queryFn: () => apiClient.agents.getByOwner(address!),
+    enabled: !!address,
     ...options,
   });
 }

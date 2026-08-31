@@ -37,7 +37,7 @@ function getStatusColor(status: string): string {
     case 'PAUSED':
       return 'bg-gray-500/10 text-gray-600';
     case 'COMPLETED':
-      return 'bg-blue-500/10 text-blue-600';
+      return 'bg-purple-500/10 text-purple-600';
     case 'REJECTED':
       return 'bg-red-500/10 text-red-600';
     default:

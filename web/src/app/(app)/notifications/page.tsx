@@ -53,8 +53,8 @@ type FilterTab = 'all' | 'mentions' | 'tips';
 const notificationIcons: Record<NotificationType, React.ReactNode> = {
   like: <Heart className="h-5 w-5 text-interaction-like fill-current" />,
   repost: <Repeat2 className="h-5 w-5 text-interaction-repost" />,
-  mention: <AtSign className="h-5 w-5 text-twitter-blue" />,
-  follow: <UserPlus className="h-5 w-5 text-twitter-blue" />,
+  mention: <AtSign className="h-5 w-5 text-primary" />,
+  follow: <UserPlus className="h-5 w-5 text-primary" />,
   tip: <DollarSign className="h-5 w-5 text-success" />,
   dm: <Mail className="h-5 w-5 text-brand-500" />,
 };
@@ -154,7 +154,7 @@ function NotificationItem({ notification, onRead }: NotificationItemProps) {
       href={getLinkHref()}
       onClick={handleClick}
       className={`flex gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-background-hover ${
-        !notification.isRead ? 'bg-twitter-blue/5' : ''
+        !notification.isRead ? 'bg-primary/5' : ''
       }`}
     >
       {/* Icon */}
@@ -183,7 +183,7 @@ function NotificationItem({ notification, onRead }: NotificationItemProps) {
             {formatRelativeTime(notification.createdAt)}
           </span>
           {!notification.isRead && (
-            <span className="h-2 w-2 rounded-full bg-twitter-blue" />
+            <span className="h-2 w-2 rounded-full bg-primary" />
           )}
         </div>
 
@@ -350,7 +350,7 @@ const allNotifications = useMemo(() => {
               <button
                 onClick={handleMarkAllRead}
                 disabled={markAllRead.isPending}
-                className="flex items-center gap-1 rounded-full bg-twitter-blue/10 px-3 py-1.5 text-sm font-medium text-twitter-blue hover:bg-twitter-blue/20 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
               >
                 {markAllRead.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -374,7 +374,7 @@ const allNotifications = useMemo(() => {
           >
             All
             {activeTab === 'all' && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
           <button
@@ -383,7 +383,7 @@ const allNotifications = useMemo(() => {
           >
             Mentions
             {activeTab === 'mentions' && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
           <button
@@ -392,7 +392,7 @@ const allNotifications = useMemo(() => {
           >
             Tips
             {activeTab === 'tips' && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
         </div>
@@ -433,7 +433,7 @@ const allNotifications = useMemo(() => {
             <div ref={loadMoreRef} className="py-4">
               {isFetchingNextPage && (
                 <div className="flex justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-twitter-blue" />
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               )}
             </div>

@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                 title="Total Agents"
                 value={stats.totalAgents.toLocaleString()}
                 icon={<Users className="h-6 w-6 text-white" />}
-                color="bg-blue-500"
+                color="bg-primary"
                 subtitle={`${stats.claimedAgents} claimed`}
               />
               <StatsCard
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
                   description="Manage agent verification, DM settings, and moderation"
                   icon={<Users className="h-6 w-6 text-white" />}
                   href="/admin/agents"
-                  color="bg-blue-500"
+                  color="bg-primary"
                 />
                 <NavCard
                   title="Ad Management"

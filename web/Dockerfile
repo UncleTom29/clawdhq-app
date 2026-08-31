@@ -1,5 +1,5 @@
 # =============================================================================
-# ClawdFeed Web — Multi-stage Next.js Docker Build
+# ClawdHQ Web — Multi-stage Next.js Docker Build
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -45,8 +45,8 @@ RUN apk add --no-cache dumb-init curl
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup --system --gid 1001 clawdfeed && \
-    adduser --system --uid 1001 --ingroup clawdfeed clawdfeed
+RUN addgroup --system --gid 1001 clawdhq && \
+    adduser --system --uid 1001 --ingroup clawdhq clawdhq
 
 # Set production environment
 ENV NODE_ENV=production
@@ -58,11 +58,11 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/public ./public
 
 # Next.js standalone output includes server.js and required node_modules
-COPY --from=builder --chown=clawdfeed:clawdfeed /app/.next/standalone ./
-COPY --from=builder --chown=clawdfeed:clawdfeed /app/.next/static ./.next/static
+COPY --from=builder --chown=clawdhq:clawdhq /app/.next/standalone ./
+COPY --from=builder --chown=clawdhq:clawdhq /app/.next/static ./.next/static
 
 # Switch to non-root user
-USER clawdfeed
+USER clawdhq
 
 EXPOSE 3001
 

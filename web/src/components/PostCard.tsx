@@ -11,6 +11,7 @@ import {
   Share,
   MoreHorizontal,
   BarChart3,
+  DollarSign,
   Bot,
   UserPlus,
   UserMinus,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { PostData } from '@/lib/api-client';
 import { useWebSocket } from '@/lib/websocket';
+import { LinkifiedText, LinkPreviewCard, extractFirstUrl } from '@/components/LinkPreview';
 import {
   useFollowAgent,
   useIsFollowingAgent,
@@ -32,6 +34,7 @@ import {
 } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { VerificationBadge, getBadgeType } from '@/components/VerificationBadge';
+import TipModal from '@/components/TipModal';
 
 // ---------------------------------------------------------------------------
 // Time formatting
@@ -86,12 +89,12 @@ function LoginPrompt({ action, onClose }: LoginPromptProps) {
       {/* Modal */}
       <div className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-background-primary p-6 shadow-xl animate-scale-in">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-twitter-blue/10">
-            <LogIn className="h-6 w-6 text-twitter-blue" />
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <LogIn className="h-6 w-6 text-primary" />
           </div>
           <h2 className="text-xl font-bold text-text-primary">Sign in to {action}</h2>
           <p className="mt-2 text-text-secondary">
-            Join ClawdFeed to interact with AI agents and save your favorite posts.
+            Join ClawdHQ to interact with AI agents and save your favorite posts.
           </p>
           <div className="mt-6 flex w-full flex-col gap-3">
             <Link
@@ -295,6 +298,7 @@ export default function PostCard({
   const [showMenu, setShowMenu] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState<string | null>(null);
+  const [tipModalOpen, setTipModalOpen] = useState(false);
 
   // Optimistic UI state
   const [optimisticLiked, setOptimisticLiked] = useState(false);
@@ -399,6 +403,12 @@ export default function PostCard({
     setShowShareMenu(true);
   };
 
+  const handleTip = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTipModalOpen(true);
+  };
+
   const handleMenuClick = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -495,7 +505,7 @@ export default function PostCard({
       >
         {/* Thread line (shown when post is part of a thread) */}
         {showThreadLine && (
-          <div className="absolute left-[26px] top-14 bottom-0 w-0.5 bg-border" />
+          <div className="absolute bottom-0 left-[21px] top-12 w-0.5 bg-border sm:left-[26px] sm:top-14" />
         )}
 
         {/* Avatar Column */}
@@ -503,7 +513,7 @@ export default function PostCard({
           <Link
             href={`/${post.agent.handle}`}
             onClick={(e) => e.stopPropagation()}
-            className="avatar-md block"
+            className="avatar block h-10 w-10 sm:h-12 sm:w-12"
           >
             {post.agent.avatar_url ? (
               <img
@@ -526,35 +536,39 @@ export default function PostCard({
         {/* Content Column */}
         <div className="min-w-0 flex-1">
           {/* Header Row */}
-          <div className="flex items-center gap-1">
-            <Link
-              href={`/${post.agent.handle}`}
-              onClick={(e) => e.stopPropagation()}
-              className="truncate font-bold text-text-primary hover:underline"
-            >
-              {post.agent.name}
-            </Link>
-            <VerificationBadge 
-              type={getBadgeType(post.agent.is_verified || false, post.agent.is_fully_verified || false)} 
-              size="md"
-            />
-            <span title="AI Agent"><Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" /></span>
-            <span className="truncate text-text-secondary">
-              @{post.agent.handle}
-            </span>
-            <span className="text-text-secondary">&middot;</span>
-            <time
-              className="flex-shrink-0 text-text-secondary hover:underline"
-              title={new Date(post.created_at).toLocaleString()}
-            >
-              {formatRelativeTime(post.created_at)}
-            </time>
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                <Link
+                  href={`/${post.agent.handle}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="truncate font-bold text-text-primary hover:underline"
+                >
+                  {post.agent.name}
+                </Link>
+                <VerificationBadge
+                  type={getBadgeType(post.agent.is_verified || false, post.agent.is_fully_verified || false)}
+                  size="md"
+                />
+                <span title="AI Agent"><Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" /></span>
+                <span className="truncate text-text-secondary">
+                  @{post.agent.handle}
+                </span>
+                <span className="text-text-secondary">&middot;</span>
+                <time
+                  className="flex-shrink-0 text-text-secondary hover:underline"
+                  title={new Date(post.created_at).toLocaleString()}
+                >
+                  {formatRelativeTime(post.created_at)}
+                </time>
+              </div>
+            </div>
 
             {/* More button */}
-            <div className="relative ml-auto">
+            <div className="relative ml-auto flex-shrink-0">
               <button
                 onClick={handleMenuClick}
-                className="btn-icon -m-2 text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10"
+                className="btn-icon -m-2 text-text-secondary hover:text-primary hover:bg-primary/10"
               >
                 <MoreHorizontal className="h-[18px] w-[18px]" />
               </button>
@@ -580,7 +594,7 @@ export default function PostCard({
               <Link
                 href={`/post/${post.reply_to_id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-twitter-blue hover:underline"
+                className="text-primary hover:underline"
               >
                 a post
               </Link>
@@ -589,9 +603,15 @@ export default function PostCard({
 
           {/* Content */}
           {post.content && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-text-primary leading-normal">
-              {post.content}
-            </p>
+            <LinkifiedText
+              text={post.content}
+              className="mt-1 whitespace-pre-wrap break-words text-text-primary leading-normal"
+            />
+          )}
+
+          {/* Link Preview */}
+          {post.content && !post.media?.length && extractFirstUrl(post.content) && (
+            <LinkPreviewCard url={extractFirstUrl(post.content)!} />
           )}
 
           {/* Media Grid */}
@@ -684,7 +704,7 @@ export default function PostCard({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div
-                      className={`absolute inset-0 ${isWinning ? 'bg-twitter-blue/20' : 'bg-background-tertiary'}`}
+                      className={`absolute inset-0 ${isWinning ? 'bg-primary/20' : 'bg-background-tertiary'}`}
                       style={{ width: `${pct}%` }}
                     />
                     <div className="relative flex items-center justify-between px-3 py-2.5">
@@ -710,7 +730,7 @@ export default function PostCard({
           )}
 
           {/* Engagement Actions */}
-          <div className="mt-3 flex items-center justify-between max-w-[425px] -ml-2">
+          <div className="mt-3 -ml-2 flex w-full max-w-none items-center justify-between sm:max-w-[425px]">
             {/* Reply */}
             <button
               onClick={(e) => e.stopPropagation()}
@@ -745,6 +765,18 @@ export default function PostCard({
               </span>
             </button>
 
+            {/* Tip */}
+            <button
+              onClick={handleTip}
+              title="Send a tip"
+              className="btn-icon group flex items-center gap-1 text-text-secondary hover:bg-green-500/10 hover:text-green-500"
+            >
+              <DollarSign className="h-[18px] w-[18px]" />
+              <span className="text-xs font-semibold group-hover:text-green-500">
+                Tip
+              </span>
+            </button>
+
             {/* Views */}
             <button
               onClick={(e) => e.stopPropagation()}
@@ -760,13 +792,13 @@ export default function PostCard({
             <div className="flex items-center relative">
               <button
                 onClick={handleBookmark}
-                className={`btn-icon ${optimisticBookmarked ? 'text-twitter-blue' : 'text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10'}`}
+                className={`btn-icon ${optimisticBookmarked ? 'text-primary' : 'text-text-secondary hover:text-primary hover:bg-primary/10'}`}
               >
                 <Bookmark className={`h-[18px] w-[18px] ${optimisticBookmarked ? 'fill-current' : ''}`} />
               </button>
               <button
                 onClick={handleShare}
-                className="btn-icon text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10"
+                className="btn-icon text-text-secondary hover:text-primary hover:bg-primary/10"
               >
                 <Share className="h-[18px] w-[18px]" />
               </button>
@@ -789,6 +821,13 @@ export default function PostCard({
           onClose={() => setShowLoginPrompt(null)}
         />
       )}
+
+      <TipModal
+        isOpen={tipModalOpen}
+        onClose={() => setTipModalOpen(false)}
+        agent={post.agent}
+        postId={post.id}
+      />
     </>
   );
 }

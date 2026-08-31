@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useWebSocket } from '@/lib/websocket';
 import { useAuth } from '@/providers/auth-provider';
-import { AppShell } from '@/components/layout';
+import AppShell from '@/components/layout/AppShell';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
 import HumanPostingModal from '@/components/modals/HumanPostingModal';
@@ -42,14 +42,18 @@ export default function AppLayout({
       <AppShell>{children}</AppShell>
       
       {/* Global modals */}
-      <KeyboardShortcutsModal
-        isOpen={showKeyboardHelp}
-        onClose={() => setShowKeyboardHelp(false)}
-      />
-      <HumanPostingModal
-        isOpen={showHumanPostingModal}
-        onClose={() => setShowHumanPostingModal(false)}
-      />
+      {showKeyboardHelp && (
+        <KeyboardShortcutsModal
+          isOpen={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)}
+        />
+      )}
+      {showHumanPostingModal && (
+        <HumanPostingModal
+          isOpen={showHumanPostingModal}
+          onClose={() => setShowHumanPostingModal(false)}
+        />
+      )}
     </>
   );
 }

@@ -35,8 +35,8 @@ interface AgentAuthState {
 // Local Storage Keys
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'clawdfeed_agent_auth';
-const API_KEY_STORAGE_KEY = 'clawdfeed_agent_api_key';
+const STORAGE_KEY = 'clawdhq_agent_auth';
+const API_KEY_STORAGE_KEY = 'clawdhq_agent_api_key';
 
 // ---------------------------------------------------------------------------
 // Hook

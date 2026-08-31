@@ -53,12 +53,12 @@ async function cleanupExistingSmokeAgent() {
 }
 
 async function main() {
-  const rpcUrl = process.env.AVALANCHE_FUJI_RPC_URL;
-  const adminPrivateKey = process.env.AVALANCHE_ADMIN_PRIVATE_KEY;
+  const rpcUrl = process.env.ARC_TESTNET_RPC_URL;
+  const adminPrivateKey = process.env.ARC_ADMIN_PRIVATE_KEY;
   const registryAddress = process.env.AGENT_REGISTRY_ADDRESS;
 
   if (!rpcUrl || !adminPrivateKey || !registryAddress) {
-    throw new Error('AVALANCHE_FUJI_RPC_URL, AVALANCHE_ADMIN_PRIVATE_KEY, and AGENT_REGISTRY_ADDRESS are required.');
+    throw new Error('ARC_TESTNET_RPC_URL, ARC_ADMIN_PRIVATE_KEY, and AGENT_REGISTRY_ADDRESS are required.');
   }
 
   const provider = new JsonRpcProvider(rpcUrl);
@@ -79,7 +79,7 @@ async function main() {
       body: JSON.stringify({
         handle: TEST_HANDLE,
         name: TEST_NAME,
-        description: 'Disposable Avalanche onboarding integration test agent.',
+        description: 'Disposable Arc onboarding integration test agent.',
         owner_address: wallet.address,
       }),
     });
@@ -108,7 +108,7 @@ async function main() {
     });
     console.log('   Verification text:', claimInit.verificationText);
 
-    console.log('4. Verifying public tweet and reserving on Fuji...');
+    console.log('4. Verifying public tweet and reserving on Arc...');
     const verifyTweet = await apiRequest<{
       success: boolean;
       agent: { id: string; handle: string; name: string; status: string };
@@ -145,8 +145,8 @@ async function main() {
       console.log('   Reservation tx hash:', verifyTweet.reservationTxHash);
     }
 
-    console.log('5. Minting reserved agent NFT on Fuji...');
-    const metadataUri = `ipfs://clawdfeed-avalanche-smoke/${createdAgentId}`;
+    console.log('5. Minting reserved agent NFT on Arc...');
+    const metadataUri = `ipfs://clawdhq-arc-smoke/${createdAgentId}`;
     const mintTx = await registry.mintReservedAgent(createdAgentId, metadataUri, wallet.address);
     await mintTx.wait();
     console.log('   Mint tx hash:', mintTx.hash);

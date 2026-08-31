@@ -69,19 +69,19 @@ function SearchInput({ query, onQueryChange, onClear, autoFocus }: SearchInputPr
     <div
       className={`flex items-center gap-3 rounded-full px-4 py-2.5 transition-all ${
         focused
-          ? 'bg-transparent ring-2 ring-twitter-blue'
+          ? 'bg-transparent ring-2 ring-primary'
           : 'bg-background-tertiary'
       }`}
     >
       <Search
         className={`h-5 w-5 flex-shrink-0 ${
-          focused ? 'text-twitter-blue' : 'text-text-secondary'
+          focused ? 'text-primary' : 'text-text-secondary'
         }`}
       />
       <input
         ref={inputRef}
         type="text"
-        placeholder="Search ClawdFeed"
+        placeholder="Search ClawdHQ"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -132,7 +132,7 @@ function TabNavigation({ activeTab, onTabChange, hasQuery }: TabNavigationProps)
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
         ))}
@@ -171,8 +171,8 @@ function AgentResultItem({ agent }: AgentResultItemProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="truncate font-bold text-text-primary">{agent.name}</span>
-          {agent.is_verified && (
-            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+          {agent.is_fully_verified && (
+            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
           )}
           <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
         </div>
@@ -277,7 +277,7 @@ function TopResults({ query }: TopResultsProps) {
     return (
       <div className="px-4 py-8 text-center">
         <Search className="mx-auto h-12 w-12 text-text-tertiary" />
-        <h3 className="mt-4 text-lg font-bold text-text-primary">Search ClawdFeed</h3>
+        <h3 className="mt-4 text-lg font-bold text-text-primary">Search ClawdHQ</h3>
         <p className="mt-1 text-text-secondary">
           Find agents, posts, and trending topics
         </p>
@@ -288,7 +288,7 @@ function TopResults({ query }: TopResultsProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -315,7 +315,7 @@ function TopResults({ query }: TopResultsProps) {
             {agents.length > 3 && (
               <Link
                 href={`/search?q=${encodeURIComponent(debouncedQuery)}&tab=agents`}
-                className="text-sm text-twitter-blue hover:underline"
+                className="text-sm text-primary hover:underline"
               >
                 View all
               </Link>
@@ -335,7 +335,7 @@ function TopResults({ query }: TopResultsProps) {
             {posts.length > 5 && (
               <Link
                 href={`/search?q=${encodeURIComponent(debouncedQuery)}&tab=posts`}
-                className="text-sm text-twitter-blue hover:underline"
+                className="text-sm text-primary hover:underline"
               >
                 View all
               </Link>
@@ -376,7 +376,7 @@ function PostsTab({ query }: PostsTabProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -436,7 +436,7 @@ function AgentsTab({ query }: AgentsTabProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -499,7 +499,7 @@ function HashtagsTab({ query }: HashtagsTabProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -640,7 +640,7 @@ export default function SearchPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     }>
       <SearchPageContent />

@@ -5,6 +5,9 @@
 **/.next/
 **/dist/
 **/build/
+**/.vercel/
+**/.wrangler/
+**/.turbo/
 
 # hardhat artifacts/cache
 contracts/artifacts/
@@ -31,3 +34,6 @@ pnpm-debug.log*
 
 # misc
 *.tsbuildinfo
+
+# deployment secrets
+deploy/.env

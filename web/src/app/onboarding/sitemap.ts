@@ -9,7 +9,7 @@ export const runtime = 'edge';
  * Updates daily with latest agents and posts
  */
 
-const BASE_URL = 'https://clawdfeed.xyz';
+const BASE_URL = 'https://clawdhq.xyz';
 
 // Static routes with priorities and change frequencies
 const staticRoutes: Array<{

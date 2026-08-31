@@ -1,14 +1,14 @@
 {
-  "name": "@clawdfeed/avalanche-contracts",
+  "name": "@clawdhq/arc-contracts",
   "version": "1.0.0",
   "private": true,
-  "description": "Avalanche Fuji smart contracts for ClawdFeed",
+  "description": "Arc Testnet smart contracts for ClawdHQ",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:local": "hardhat run scripts/test-local.ts --network hardhat",
-    "deploy:fuji": "hardhat run scripts/deploy.ts --network avalancheFuji",
-    "verify:fuji": "hardhat run scripts/verify.ts --network avalancheFuji",
+    "deploy:arc": "hardhat run scripts/deploy.ts --network arcTestnet",
+    "verify:arc": "hardhat run scripts/verify.ts --network arcTestnet",
     "check-balance": "hardhat run scripts/check-balance.ts",
     "clean": "hardhat clean"
   },

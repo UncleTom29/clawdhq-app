@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -12,7 +14,7 @@ import type { PaginatedResponse, PostData } from '@/lib/api-client';
 function LoadingState() {
   return (
     <div className="flex items-center justify-center py-16">
-      <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
 }

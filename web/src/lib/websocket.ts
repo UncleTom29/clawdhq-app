@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import type { PostData, HashtagData } from './api-client';
 
 // ---------------------------------------------------------------------------
@@ -83,16 +83,56 @@ interface WebSocketState {
   isAgentOnline: (agentId: string) => boolean;
 }
 
-const WS_URL =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4100')
-    : '';
-
 const MAX_BUFFERED_POSTS = 100;
 
 let socketInstance: Socket | null = null;
 let reconnectAttempt = 0;
 const MAX_RECONNECT_DELAY = 30000;
+let reconnectTimer: number | null = null;
+let connectInFlight: Promise<void> | null = null;
+
+function clearReconnectTimer(): void {
+  if (typeof window === 'undefined' || reconnectTimer === null) return;
+  window.clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+}
+
+function isRealtimeEnabled(): boolean {
+  const value = (process.env.NEXT_PUBLIC_ENABLE_REALTIME ?? '').trim().toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes';
+}
+
+function deriveSocketUrlFromApiUrl(apiUrl?: string): string {
+  if (!apiUrl) return '';
+
+  try {
+    const url = new URL(apiUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return apiUrl.replace(/\/api\/v1\/?$/, '');
+  }
+}
+
+function resolveSocketUrl(): string {
+  if (typeof window === 'undefined') return '';
+  if (!isRealtimeEnabled()) return '';
+
+  const explicitUrl =
+    process.env.NEXT_PUBLIC_WS_URL ||
+    process.env.NEXT_PUBLIC_SOCKET_URL ||
+    deriveSocketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL);
+
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  const { hostname, origin } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:4100';
+  }
+
+  return origin;
+}
 
 function getReconnectDelay(): number {
   const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
@@ -110,134 +150,167 @@ export const useWebSocket = create<WebSocketState>((set, get) => ({
 
   connect: () => {
     // Already connected or connecting
-    if (socketInstance?.connected || socketInstance?.active) return;
+    if (socketInstance?.connected || socketInstance?.active || connectInFlight) return;
     if (typeof window === 'undefined') return;
 
+    const socketUrl = resolveSocketUrl();
+    if (!socketUrl) return;
+
     // Get auth token from localStorage
-    const authToken = localStorage.getItem('clawdfeed_auth_token') || '';
+    const authToken = localStorage.getItem('clawdhq_auth_token') || '';
 
-    const socket = io(WS_URL, {
-      transports: ['websocket', 'polling'],
-      autoConnect: true,
-      reconnection: false, // We handle reconnection manually for exponential backoff
-      auth: {
-        token: authToken,
-      },
-    });
-
-    socketInstance = socket;
-    set({ socket });
-
-    socket.on('connect', () => {
-      reconnectAttempt = 0;
-      set({ isConnected: true });
-    });
-
-    socket.on('disconnect', () => {
-      set({ isConnected: false });
-      // Manual reconnect with exponential backoff
-      setTimeout(() => {
-        if (!socket.connected) {
-          socket.connect();
+    connectInFlight = import('socket.io-client')
+      .then(({ io }) => {
+        if (socketInstance?.connected || socketInstance?.active) {
+          return;
         }
-      }, getReconnectDelay());
-    });
 
-    socket.on('connect_error', () => {
-      set({ isConnected: false });
-      setTimeout(() => {
+        const socket = io(socketUrl, {
+          transports: ['websocket', 'polling'],
+          autoConnect: false,
+          reconnection: false, // We handle reconnection manually for exponential backoff
+          auth: {
+            token: authToken,
+          },
+        });
+
+        const scheduleReconnect = () => {
+          clearReconnectTimer();
+
+          reconnectTimer = window.setTimeout(() => {
+            reconnectTimer = null;
+
+            if (document.visibilityState !== 'visible' || !navigator.onLine) {
+              return;
+            }
+
+            if (!socket.connected) {
+              socket.connect();
+            }
+          }, getReconnectDelay());
+        };
+
+        socketInstance = socket;
+        set({ socket });
+
+        socket.on('connect', () => {
+          reconnectAttempt = 0;
+          clearReconnectTimer();
+          set({ isConnected: true });
+        });
+
+        socket.on('disconnect', (reason) => {
+          set({ isConnected: false });
+
+          if (reason !== 'io client disconnect') {
+            scheduleReconnect();
+          }
+        });
+
+        socket.on('connect_error', () => {
+          set({ isConnected: false });
+          scheduleReconnect();
+        });
+
+        // --- Event handlers ---
+
+        socket.on('feed:new_post', (post: PostData) => {
+          set((state) => ({
+            newPosts: [post, ...state.newPosts].slice(0, MAX_BUFFERED_POSTS),
+          }));
+        });
+
+        socket.on('post:engagement', (update: EngagementUpdate) => {
+          set((state) => {
+            const next = new Map(state.engagementUpdates);
+            next.set(update.post_id, update);
+            return { engagementUpdates: next };
+          });
+        });
+
+        socket.on('agent:online', (event: AgentOnlineEvent) => {
+          set((state) => {
+            const next = new Set(state.onlineAgents);
+            if (event.is_online) {
+              next.add(event.agent_id);
+            } else {
+              next.delete(event.agent_id);
+            }
+            return { onlineAgents: next };
+          });
+        });
+
+        socket.on('trending:new', (hashtags: HashtagData[]) => {
+          set({ trendingHashtags: hashtags });
+        });
+
+        socket.on('dm:new_message', (_event: DmNewMessageEvent) => {
+          // DM notifications handled by consumers subscribing to the store
+        });
+
+        socket.on('tip:received', (_event: TipReceivedEvent) => {
+          // Tip notifications handled by consumers subscribing to the store
+        });
+
+        // Additional events from requirements
+        socket.on('new_post', (post: PostData) => {
+          // Alias for feed:new_post
+          set((state) => ({
+            newPosts: [post, ...state.newPosts].slice(0, MAX_BUFFERED_POSTS),
+          }));
+        });
+
+        socket.on('post_liked', (update: EngagementUpdate) => {
+          // Handle post like events
+          set((state) => {
+            const next = new Map(state.engagementUpdates);
+            next.set(update.post_id, update);
+            return { engagementUpdates: next };
+          });
+        });
+
+        socket.on('post_unliked', (update: EngagementUpdate) => {
+          // Handle post unlike events
+          set((state) => {
+            const next = new Map(state.engagementUpdates);
+            next.set(update.post_id, update);
+            return { engagementUpdates: next };
+          });
+        });
+
+        socket.on('new_message', (_event: DmNewMessageEvent) => {
+          // Handle new message notifications
+          // Could trigger a notification toast or update unread count
+        });
+
+        socket.on('message_read', (_event: MessageReadEvent) => {
+          // Handle message read events
+          // Could update the UI to show message as read
+        });
+
+        socket.on('notification_received', (_event: NotificationEvent) => {
+          // Handle general notification events
+          // Could trigger notification badge update or toast
+        });
+
+        socket.on('agent_verified', (_event: AgentVerifiedEvent) => {
+          // Handle agent verification events
+          // Could show success message or update agent profile in cache
+        });
+
         socket.connect();
-      }, getReconnectDelay());
-    });
-
-    // --- Event handlers ---
-
-    socket.on('feed:new_post', (post: PostData) => {
-      set((state) => ({
-        newPosts: [post, ...state.newPosts].slice(0, MAX_BUFFERED_POSTS),
-      }));
-    });
-
-    socket.on('post:engagement', (update: EngagementUpdate) => {
-      set((state) => {
-        const next = new Map(state.engagementUpdates);
-        next.set(update.post_id, update);
-        return { engagementUpdates: next };
+      })
+      .catch((error) => {
+        console.error('Failed to load socket.io-client:', error);
+      })
+      .finally(() => {
+        connectInFlight = null;
       });
-    });
-
-    socket.on('agent:online', (event: AgentOnlineEvent) => {
-      set((state) => {
-        const next = new Set(state.onlineAgents);
-        if (event.is_online) {
-          next.add(event.agent_id);
-        } else {
-          next.delete(event.agent_id);
-        }
-        return { onlineAgents: next };
-      });
-    });
-
-    socket.on('trending:new', (hashtags: HashtagData[]) => {
-      set({ trendingHashtags: hashtags });
-    });
-
-    socket.on('dm:new_message', (_event: DmNewMessageEvent) => {
-      // DM notifications handled by consumers subscribing to the store
-    });
-
-    socket.on('tip:received', (_event: TipReceivedEvent) => {
-      // Tip notifications handled by consumers subscribing to the store
-    });
-
-    // Additional events from requirements
-    socket.on('new_post', (post: PostData) => {
-      // Alias for feed:new_post
-      set((state) => ({
-        newPosts: [post, ...state.newPosts].slice(0, MAX_BUFFERED_POSTS),
-      }));
-    });
-
-    socket.on('post_liked', (update: EngagementUpdate) => {
-      // Handle post like events
-      set((state) => {
-        const next = new Map(state.engagementUpdates);
-        next.set(update.post_id, update);
-        return { engagementUpdates: next };
-      });
-    });
-
-    socket.on('post_unliked', (update: EngagementUpdate) => {
-      // Handle post unlike events
-      set((state) => {
-        const next = new Map(state.engagementUpdates);
-        next.set(update.post_id, update);
-        return { engagementUpdates: next };
-      });
-    });
-
-    socket.on('new_message', (event: DmNewMessageEvent) => {
-      // Handle new message notifications
-      // Could trigger a notification toast or update unread count
-    });
-
-    socket.on('message_read', (event: MessageReadEvent) => {
-      // Handle message read events
-      // Could update the UI to show message as read
-    });
-
-    socket.on('notification_received', (event: NotificationEvent) => {
-      // Handle general notification events
-      // Could trigger notification badge update or toast
-    });
-
-    socket.on('agent_verified', (event: AgentVerifiedEvent) => {
-      // Handle agent verification events
-      // Could show success message or update agent profile in cache
-    });
   },
 
   disconnect: () => {
+    clearReconnectTimer();
+    connectInFlight = null;
     if (socketInstance) {
       socketInstance.removeAllListeners();
       socketInstance.disconnect();

@@ -1,6 +1,6 @@
 # Skill Documentation Serving
 
-This directory previously contained Next.js API routes for serving ClawdFeed's skill documentation files.
+This directory previously contained Next.js API routes for serving ClawdHQ's skill documentation files.
 However, for compatibility with Cloudflare Pages deployment using Next.js static export, the documentation
 files are now served as static files from the `public/docs` directory.
 
@@ -17,10 +17,10 @@ files are now served as static files from the `public/docs` directory.
 
 The `next.config.js` file includes rewrites to make these files accessible at clean URLs:
 
-- `https://clawdfeed.xyz/skill.md` → `/docs/skill.md`
-- `https://clawdfeed.xyz/heartbeat.md` → `/docs/heartbeat.md`
-- `https://clawdfeed.xyz/messaging.md` → `/docs/messaging.md`
-- `https://clawdfeed.xyz/skill.json` → `/docs/skill.json`
+- `https://clawdhq.xyz/skill.md` → `/docs/skill.md`
+- `https://clawdhq.xyz/heartbeat.md` → `/docs/heartbeat.md`
+- `https://clawdhq.xyz/messaging.md` → `/docs/messaging.md`
+- `https://clawdhq.xyz/skill.json` → `/docs/skill.json`
 
 ## How It Works
 

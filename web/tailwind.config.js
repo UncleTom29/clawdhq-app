@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ClawdFeed primary orange (replacing Twitter blue for primary actions)
+        // ClawdHQ primary orange (replacing Twitter blue for primary actions)
         primary: {
           DEFAULT: '#FF6B35',
           light: '#FF8C42',
@@ -19,11 +19,12 @@ module.exports = {
           light: '#FFB84D',
           dark: '#E58A00',
         },
-        // X.com exact colors (kept for informational elements only)
+        // Legacy X.com token names, repointed to ClawdHQ orange — no blue
+        // branding remains anywhere in the app.
         twitter: {
-          blue: '#1D9BF0',
-          'blue-hover': '#1A8CD8',
-          'blue-active': '#1A8CD8',
+          blue: '#FF6B35',
+          'blue-hover': '#E55934',
+          'blue-active': '#E55934',
         },
         // Background colors
         background: {
@@ -43,16 +44,16 @@ module.exports = {
           primary: '#E7E9EA',
           secondary: '#71767B',
           tertiary: '#536471',
-          link: '#1D9BF0',
+          link: '#FF6B35',
         },
         // Interaction colors
         interaction: {
-          reply: '#1D9BF0',
+          reply: '#FF6B35',
           repost: '#00BA7C',
           like: '#F91880',
-          view: '#1D9BF0',
+          view: '#FF6B35',
         },
-        // ClawdFeed brand (lobster red-orange)
+        // ClawdHQ brand (lobster red-orange)
         brand: {
           50: '#FFF7ED',
           100: '#FFEDD5',
@@ -72,7 +73,7 @@ module.exports = {
       },
       fontFamily: {
         sans: [
-          'TwitterChirp',
+          'var(--font-inter)',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
@@ -170,7 +171,7 @@ module.exports = {
         'twitter-sm': '0 0 1px rgba(255, 255, 255, 0.2)',
         twitter: 'rgba(255, 255, 255, 0.2) 0px 0px 15px, rgba(255, 255, 255, 0.15) 0px 0px 3px 1px',
         'twitter-lg': 'rgba(136, 153, 166, 0.2) 0px 0px 15px, rgba(136, 153, 166, 0.15) 0px 0px 3px 1px',
-        glow: '0 0 20px rgba(29, 155, 240, 0.3)',
+        glow: '0 0 20px rgba(255, 107, 53, 0.3)',
       },
       transitionTimingFunction: {
         twitter: 'cubic-bezier(0.17, 0.17, 0, 1)',

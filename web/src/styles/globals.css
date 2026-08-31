@@ -15,13 +15,13 @@
     --text-primary: #E7E9EA;
     --text-secondary: #71767B;
     --text-tertiary: #536471;
-    --text-link: #1D9BF0;
+    --text-link: #FF6B35;
 
     --border-default: #2F3336;
     --border-light: #38444D;
     --border-hover: #536471;
 
-    /* Primary ClawdFeed orange (for primary actions) */
+    /* Primary ClawdHQ orange (for primary actions) */
     --color-primary: #FF6B35;
     --color-primary-light: #FF8C42;
     --color-primary-dark: #E55934;
@@ -33,8 +33,8 @@
     --color-secondary-dark: #E58A00;
 
     /* Twitter blue (kept for informational elements only) */
-    --accent-blue: #1D9BF0;
-    --accent-blue-hover: #1A8CD8;
+    --accent-blue: #FF6B35;
+    --accent-blue-hover: #E55934;
     --accent-green: #00BA7C;
     --accent-pink: #F91880;
     --accent-orange: #F97316;
@@ -60,7 +60,7 @@
     --text-primary: #0F1419;
     --text-secondary: #536471;
     --text-tertiary: #8B98A5;
-    --text-link: #1D9BF0;
+    --text-link: #FF6B35;
 
     --border-default: #EFF3F4;
     --border-light: #CFD9DE;
@@ -101,7 +101,7 @@
   body {
     background-color: var(--background-primary);
     color: var(--text-primary);
-    font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -123,13 +123,13 @@
     text-decoration: underline;
   }
 
-  /* Focus styles - Orange for ClawdFeed branding (WCAG 2.1 AA compliant) */
+  /* Focus styles - Orange for ClawdHQ branding (WCAG 2.1 AA compliant) */
   :focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
-  /* Selection - Orange tint for ClawdFeed branding */
+  /* Selection - Orange tint for ClawdHQ branding */
   ::selection {
     background-color: rgba(255, 107, 53, 0.4);
     color: var(--text-primary);
@@ -169,7 +169,7 @@
 @layer components {
   /* === Buttons === */
 
-  /* Primary button (orange, filled - ClawdFeed branding) */
+  /* Primary button (orange, filled - ClawdHQ branding) */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-base font-bold text-white transition-colors;
     background-color: var(--color-primary);
@@ -264,7 +264,8 @@
   /* Following button (inverse) */
   .btn-following {
     @apply inline-flex items-center justify-center rounded-full border bg-transparent px-4 py-1.5 text-sm font-bold transition-colors;
-    border-color: rgba(255, 107, 53, 0.35);
+    background-color: rgba(255, 107, 53, 0.1);
+    border-color: rgba(255, 107, 53, 0.5);
     color: var(--color-primary);
     min-height: 32px;
   }
@@ -301,7 +302,7 @@
 
   /* Modal overlay */
   .modal-overlay {
-    @apply fixed inset-0 z-50 bg-blue-400/20 backdrop-blur-sm;
+    @apply fixed inset-0 z-50 bg-black/60 backdrop-blur-sm;
   }
 
   /* Modal content */
@@ -338,7 +339,7 @@
 
   /* === Form Elements === */
 
-  /* Input field - orange focus for ClawdFeed */
+  /* Input field - orange focus for ClawdHQ */
   .input-field {
     @apply w-full rounded-md border border-border bg-transparent px-3 py-2 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1;
     border-color: var(--border-default);
@@ -348,7 +349,7 @@
     ring-color: var(--color-primary);
   }
 
-  /* Search input (rounded) - orange focus for ClawdFeed */
+  /* Search input (rounded) - orange focus for ClawdHQ */
   .input-search {
     @apply w-full rounded-full border-none bg-background-tertiary px-5 py-3 text-base text-text-primary placeholder:text-text-secondary focus:bg-transparent focus:outline-none focus:ring-2;
   }
@@ -369,6 +370,14 @@
     @apply mx-auto flex min-h-screen;
     max-width: 1280px;
     gap: 24px;
+  }
+
+  @media (max-width: 767px) {
+    .layout-wrapper {
+      display: block;
+      max-width: 100%;
+      gap: 0;
+    }
   }
 
   /* Left sidebar - Responsive widths */
@@ -402,7 +411,9 @@
   @media (max-width: 767px) {
     .main-content {
       @apply border-x-0;
-      padding: 0 16px 56px 16px;
+      width: 100%;
+      max-width: 100%;
+      padding: 0 0 72px 0;
     }
   }
 
@@ -421,6 +432,13 @@
   /* Sticky header */
   .sticky-header {
     @apply sticky top-0 z-10 border-b border-border bg-background-primary/80 backdrop-blur-md;
+  }
+
+  @media (max-width: 767px) {
+    .sticky-header {
+      top: 64px;
+      z-index: 30;
+    }
   }
 
   /* === Tabs === */
@@ -442,6 +460,20 @@
     content: '';
     @apply absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full;
     background-color: var(--color-primary);
+  }
+
+  @media (max-width: 767px) {
+    .post-card {
+      gap: 12px;
+      padding: 15px 14px;
+    }
+
+    .nav-link {
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      font-size: 1.05rem;
+    }
   }
 
   /* === Badges === */
@@ -654,21 +686,4 @@
       background-color: transparent;
     }
   }
-}
-
-/* Custom fonts - Twitter Chirp approximation */
-@font-face {
-  font-family: 'TwitterChirp';
-  src: local('Segoe UI'), local('-apple-system'), local('BlinkMacSystemFont');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'TwitterChirp';
-  src: local('Segoe UI Bold'), local('-apple-system'), local('BlinkMacSystemFont');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
 }

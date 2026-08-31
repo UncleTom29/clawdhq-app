@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Bell, Mail, User, Bookmark, Users, Megaphone, BadgeCheck } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
+import { Home, Search, Bell, Mail, User } from 'lucide-react';
+import { useHumanAuth } from '@/hooks/use-human-auth';
 import { useState } from 'react';
-import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/providers/auth-provider';
 import NotificationBadge from './NotificationBadge';
+import { useMessageCount, useNotificationCount } from '@/hooks/use-notification-badges';
 
 const publicNavItems = [
   { href: '/home', icon: Home, label: 'Home', hasBadge: false },
@@ -22,39 +21,11 @@ const protectedNavItems = [
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { address } = useAccount();
   const { isAuthenticated } = useAuth();
+  const { login } = useHumanAuth();
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-
-  // Get notification count
-  const { data: notificationCount } = useQuery({
-    queryKey: ['notifications-count', address],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.notifications.getUnreadCount();
-        return response.count || 0;
-      } catch (error) {
-        return 0;
-      }
-    },
-    enabled: !!address,
-    refetchInterval: 30000,
-  });
-
-  // Get message count
-  const { data: messageCount } = useQuery({
-    queryKey: ['messages-count', address],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.messages.getUnreadCount();
-        return response.count || 0;
-      } catch (error) {
-        return 0;
-      }
-    },
-    enabled: !!address,
-    refetchInterval: 30000,
-  });
+  const { count: notificationCount } = useNotificationCount();
+  const { count: messageCount } = useMessageCount();
 
   const allNavItems = [...publicNavItems, ...protectedNavItems];
 
@@ -99,11 +70,8 @@ export default function MobileBottomNav() {
               >
                 <div className="relative">
                   <Icon
-                    className="h-6 w-6 transition-colors"
+                    className={`h-6 w-6 transition-colors ${isActive ? 'text-primary' : 'text-text-secondary'}`}
                     strokeWidth={isActive ? 2.5 : 2}
-                    style={{
-                      color: isActive ? '#FF6B35' : '#71767B',
-                    }}
                   />
                   {badgeCount > 0 && <NotificationBadge count={badgeCount} />}
                 </div>
@@ -118,11 +86,8 @@ export default function MobileBottomNav() {
             onClick={(e) => handleNavClick(e, !isAuthenticated)}
           >
             <User
-              className="h-6 w-6 transition-colors"
+              className={`h-6 w-6 transition-colors ${pathname === '/profile' ? 'text-primary' : 'text-text-secondary'}`}
               strokeWidth={pathname === '/profile' ? 2.5 : 2}
-              style={{
-                color: pathname === '/profile' ? '#FF6B35' : '#71767B',
-              }}
             />
           </Link>
         </div>
@@ -132,11 +97,20 @@ export default function MobileBottomNav() {
       {showAuthPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAuthPrompt(false)}>
           <div className="mx-4 max-w-md rounded-xl border border-border bg-background-primary p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-xl font-bold text-text-primary">Connect Wallet Required</h2>
+            <h2 className="mb-2 text-xl font-bold text-text-primary">Login Required</h2>
             <p className="mb-4 text-text-secondary">
-              Please connect your wallet to access this feature.
+              Please login to access this feature.
             </p>
             <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAuthPrompt(false);
+                  login();
+                }}
+                className="flex-1 rounded-full bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-light"
+              >
+                Login
+              </button>
               <button
                 onClick={() => setShowAuthPrompt(false)}
                 className="flex-1 rounded-full border border-border px-4 py-2 font-medium text-text-primary transition-colors hover:bg-background-hover"

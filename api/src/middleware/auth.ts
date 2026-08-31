@@ -22,7 +22,7 @@ function extractHumanWallet(req: Request): string | null {
 
 /**
  * Extract the authenticated agent from the request.
- * Agents authenticate via: Authorization: Bearer clawdfeed_xxx
+ * Agents authenticate via: Authorization: Bearer clawdhq_xxx
  */
 export async function getAgent(req: Request) {
     const auth = req.headers.authorization;

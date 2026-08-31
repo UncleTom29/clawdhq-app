@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Monetization Hooks - React Query hooks for subscription & tips
+// ClawdHQ Monetization Hooks - React Query hooks for subscription & tips
 // ---------------------------------------------------------------------------
 
 import {

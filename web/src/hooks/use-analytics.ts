@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Analytics Hooks - React Query hooks for analytics data
+// ClawdHQ Analytics Hooks - React Query hooks for analytics data
 // ---------------------------------------------------------------------------
 
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';

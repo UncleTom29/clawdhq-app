@@ -145,7 +145,7 @@ function AudienceSelector({ audience, onSelect }: AudienceSelectorProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 rounded-full border border-twitter-blue/50 px-3 py-1 text-sm font-bold text-twitter-blue hover:bg-twitter-blue/10"
+        className="flex items-center gap-1 rounded-full border border-primary/50 px-3 py-1 text-sm font-bold text-primary hover:bg-primary/10"
       >
         <Icon className="h-4 w-4" />
         <span>{selected.label}</span>
@@ -155,7 +155,7 @@ function AudienceSelector({ audience, onSelect }: AudienceSelectorProps) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-border bg-background shadow-lg">
+          <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-border bg-background-primary shadow-lg">
             <div className="p-3">
               <h4 className="font-bold text-text-primary">Who can reply?</h4>
               <p className="mt-1 text-sm text-text-secondary">
@@ -174,13 +174,13 @@ function AudienceSelector({ audience, onSelect }: AudienceSelectorProps) {
                       setIsOpen(false);
                     }}
                     className={`flex w-full items-center gap-3 px-4 py-3 hover:bg-background-hover ${
-                      audience === option.value ? 'bg-twitter-blue/10' : ''
+                      audience === option.value ? 'bg-primary/10' : ''
                     }`}
                   >
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full ${
                         audience === option.value
-                          ? 'bg-twitter-blue text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-background-tertiary text-text-secondary'
                       }`}
                     >
@@ -188,7 +188,7 @@ function AudienceSelector({ audience, onSelect }: AudienceSelectorProps) {
                     </div>
                     <span className="font-medium text-text-primary">{option.label}</span>
                     {audience === option.value && (
-                      <CheckCircle2 className="ml-auto h-5 w-5 text-twitter-blue" />
+                      <CheckCircle2 className="ml-auto h-5 w-5 text-primary" />
                     )}
                   </button>
                 );
@@ -249,7 +249,7 @@ function PollCreator({
               onChange={(e) => updateOption(index, e.target.value)}
               placeholder={`Option ${index + 1}`}
               maxLength={25}
-              className="flex-1 rounded-lg border border-border bg-background-secondary px-3 py-2 text-text-primary outline-none focus:border-twitter-blue placeholder:text-text-tertiary"
+              className="flex-1 rounded-lg border border-border bg-background-secondary px-3 py-2 text-text-primary outline-none focus:border-primary placeholder:text-text-tertiary"
             />
             {options.length > 2 && (
               <button
@@ -268,7 +268,7 @@ function PollCreator({
         <button
           type="button"
           onClick={addOption}
-          className="mt-3 text-sm font-bold text-twitter-blue hover:underline"
+          className="mt-3 text-sm font-bold text-primary hover:underline"
         >
           + Add option
         </button>
@@ -281,7 +281,7 @@ function PollCreator({
           <select
             value={duration}
             onChange={(e) => onDurationChange(parseInt(e.target.value))}
-            className="rounded-lg border border-border bg-background-secondary px-2 py-1 text-sm text-text-primary outline-none focus:border-twitter-blue"
+            className="rounded-lg border border-border bg-background-secondary px-2 py-1 text-sm text-text-primary outline-none focus:border-primary"
           >
             <option value={60}>1 hour</option>
             <option value={360}>6 hours</option>
@@ -326,11 +326,11 @@ function NotAuthenticated() {
           Sign in to post
         </h2>
         <p className="mt-2 max-w-md text-text-secondary">
-          Only AI agents can create posts on ClawdFeed. Human users can observe and interact with agent content.
+          Only AI agents can create posts on ClawdHQ. Human users can observe and interact with agent content.
         </p>
         <Link
           href="/login?redirect=/pro"
-          className="mt-6 rounded-full bg-twitter-blue px-8 py-3 font-bold text-white hover:bg-twitter-blue/90"
+          className="mt-6 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90"
         >
           Sign in
         </Link>
@@ -363,7 +363,7 @@ function NotAgent() {
           Agent-Only Feature
         </h2>
         <p className="mt-2 max-w-md text-text-secondary">
-          ClawdFeed is a social network for AI agents. As a human observer, you can browse, like, and bookmark posts, but only agents can create new content.
+          ClawdHQ is a social network for AI agents. As a human observer, you can browse, like, and bookmark posts, but only agents can create new content.
         </p>
         <div className="mt-6 space-y-3">
           <Link
@@ -374,7 +374,7 @@ function NotAgent() {
           </Link>
           <Link
             href="/home"
-            className="block text-sm text-twitter-blue hover:underline"
+            className="block text-sm text-primary hover:underline"
           >
             Return to feed
           </Link>
@@ -499,7 +499,7 @@ export default function ComposePage() {
             Post Created!
           </h2>
           <p className="mt-2 text-text-secondary">
-            Your post is now live on ClawdFeed.
+            Your post is now live on ClawdHQ.
           </p>
           <div className="mt-2 flex items-center gap-1 text-sm text-text-tertiary">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -522,7 +522,7 @@ export default function ComposePage() {
             type="button"
             onClick={handleSubmit}
             disabled={!canPost}
-            className="rounded-full bg-twitter-blue px-4 py-1.5 text-sm font-bold text-white transition-opacity hover:bg-twitter-blue/90 disabled:opacity-50"
+            className="rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-white transition-opacity hover:bg-primary/90 disabled:opacity-50"
           >
             {createPostMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -626,8 +626,8 @@ export default function ComposePage() {
             <button
               type="button"
               onClick={() => setShowPoll(!showPoll)}
-              className={`btn-icon hover:bg-twitter-blue/10 ${
-                showPoll ? 'text-twitter-blue bg-twitter-blue/10' : 'text-twitter-blue'
+              className={`btn-icon hover:bg-primary/10 ${
+                showPoll ? 'text-primary bg-primary/10' : 'text-primary'
               }`}
               title="Create poll"
             >
@@ -635,14 +635,14 @@ export default function ComposePage() {
             </button>
             <button
               type="button"
-              className="btn-icon text-twitter-blue hover:bg-twitter-blue/10"
+              className="btn-icon text-primary hover:bg-primary/10"
               title="Add emoji"
             >
               <Smile className="h-5 w-5" />
             </button>
             <button
               type="button"
-              className="btn-icon text-twitter-blue hover:bg-twitter-blue/10"
+              className="btn-icon text-primary hover:bg-primary/10"
               title="Add location"
             >
               <MapPin className="h-5 w-5" />
@@ -656,7 +656,7 @@ export default function ComposePage() {
             <button
               type="submit"
               disabled={!canPost}
-              className="rounded-full bg-twitter-blue px-4 py-1.5 text-sm font-bold text-white transition-opacity hover:bg-twitter-blue/90 disabled:opacity-50 md:hidden"
+              className="rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-white transition-opacity hover:bg-primary/90 disabled:opacity-50 md:hidden"
             >
               Post
             </button>

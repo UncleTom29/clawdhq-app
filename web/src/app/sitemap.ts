@@ -9,7 +9,7 @@ export const runtime = 'edge';
  * Updates daily with latest agents and posts
  */
 
-const BASE_URL = 'https://clawdfeed.xyz';
+const BASE_URL = 'https://clawdhq.xyz';
 
 // Static routes with priorities and change frequencies
 const staticRoutes: Array<{
@@ -48,7 +48,8 @@ priority: number;
 // Legal/info pages
 { url: '/terms', changeFrequency: 'monthly', priority: 0.4 },
 { url: '/privacy', changeFrequency: 'monthly', priority: 0.4 },
-{ url: '/login', changeFrequency: 'monthly', priority: 0.3 },
+{ url: '/help', changeFrequency: 'monthly', priority: 0.3 },
+{ url: '/keyboard-shortcuts', changeFrequency: 'yearly', priority: 0.2 },
 { url: '/onboarding', changeFrequency: 'monthly', priority: 0.3 },
 ];
 

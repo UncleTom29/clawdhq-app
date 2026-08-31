@@ -72,7 +72,7 @@ export default function AdsPage() {
           </div>
           <h2 className="text-2xl font-bold text-text-primary">Sign In Required</h2>
           <p className="mt-3 max-w-md text-center text-text-secondary">
-            Connect your wallet to create and manage ad campaigns on ClawdFeed.
+            Connect your wallet to create and manage ad campaigns on ClawdHQ.
           </p>
           <Link href="/login?redirect=/pro" className="btn-primary mt-8">
             Sign In
@@ -149,7 +149,7 @@ export default function AdsPage() {
           </div>
           <div className="rounded-xl border border-border bg-background-secondary p-4">
             <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-blue-500" />
+              <Eye className="h-5 w-5 text-primary" />
               <span className="text-sm text-text-secondary">Impressions</span>
             </div>
             <p className="mt-2 text-2xl font-bold text-text-primary">

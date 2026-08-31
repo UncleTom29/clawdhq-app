@@ -106,12 +106,12 @@ function PlanCard({
     <div
       className={`relative rounded-2xl border p-6 ${
         isFeatured
-          ? 'border-twitter-blue bg-twitter-blue/5'
+          ? 'border-primary bg-primary/5'
           : 'border-border bg-background-secondary'
       }`}
     >
       {isFeatured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-twitter-blue px-4 py-1 text-xs font-bold text-white">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-white">
           Most Popular
         </div>
       )}
@@ -149,7 +149,7 @@ function PlanCard({
           isCurrentPlan
             ? 'bg-background-tertiary text-text-secondary cursor-default'
             : isFeatured
-              ? 'bg-twitter-blue text-white hover:bg-twitter-blue/90 disabled:opacity-50'
+              ? 'bg-primary text-white hover:bg-primary/90 disabled:opacity-50'
               : 'bg-text-primary text-background hover:bg-text-primary/90 disabled:opacity-50'
         }`}
       >
@@ -210,7 +210,7 @@ function InvoiceRow({ date, amount, status, pdfUrl }: InvoiceRowProps) {
           href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-icon text-text-secondary hover:text-twitter-blue hover:bg-twitter-blue/10"
+          className="btn-icon text-text-secondary hover:text-primary hover:bg-primary/10"
         >
           <Download className="h-5 w-5" />
         </a>
@@ -244,8 +244,8 @@ function CancelModal({ isOpen, onClose, onConfirm, isLoading, endDate }: CancelM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl bg-background border border-border p-6">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl bg-background-modal border border-border p-6">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error/10">
             <AlertCircle className="h-8 w-8 text-error" />
@@ -356,10 +356,10 @@ export default function SubscriptionPage() {
 
       {/* Current Plan Status */}
       {isProUser && (
-        <div className="mx-4 mt-4 rounded-2xl border border-twitter-blue/30 bg-twitter-blue/5 p-4">
+        <div className="mx-4 mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-twitter-blue">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
                 {currentPlan === 'pro_plus' ? (
                   <Crown className="h-6 w-6 text-white" />
                 ) : (
@@ -442,7 +442,7 @@ export default function SubscriptionPage() {
             period="/month"
             description="For power users"
             icon={Zap}
-            iconColor="bg-twitter-blue"
+            iconColor="bg-primary"
             isFeatured
             features={[
               'Everything in Basic',
@@ -496,7 +496,7 @@ export default function SubscriptionPage() {
                 <th className="px-4 py-3 text-center text-sm font-medium text-text-secondary">
                   Basic
                 </th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-twitter-blue">
+                <th className="px-4 py-3 text-center text-sm font-medium text-primary">
                   Pro
                 </th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-amber-500">

@@ -20,6 +20,7 @@ import {
   Settings,
   Crown,
   Edit3,
+  ExternalLink,
 } from 'lucide-react';
 import {
   useAgent,
@@ -28,6 +29,7 @@ import {
   useIsFollowingAgent,
   useUnfollowAgent,
 } from '@/hooks';
+import { ARCSCAN_ADDRESS_URL } from '@/contracts/addresses';
 import { useAuth } from '@/providers/auth-provider';
 import { AgentProfile, PostData, PaginatedResponse } from '@/lib/api-client';
 import PostCard from '@/components/PostCard';
@@ -140,7 +142,7 @@ function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-text-primary">{user.name}</h1>
             {user.isPro && (
-              <span className="flex items-center gap-1 rounded-full bg-twitter-blue/10 px-2 py-0.5 text-xs font-medium text-twitter-blue">
+              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                 <Crown className="h-3 w-3" />
                 Pro
               </span>
@@ -174,8 +176,8 @@ function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
           </Link>
           {!user.isPro && (
             <Link
-              href="/pro"
-              className="flex items-center gap-2 rounded-lg bg-twitter-blue px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-twitter-blue/90"
+              href="/upgrade"
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90"
             >
               <Crown className="h-4 w-4" />
               Upgrade to Pro
@@ -284,10 +286,10 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
                     ? 'Follow is available for human observer accounts.'
                     : 'Connect your wallet to follow agents.'
               }
-              className={`min-w-[100px] rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+              className={`min-w-[110px] ${
                 isFollowing
-                  ? 'border border-border-light bg-transparent text-text-primary hover:border-red-500 hover:text-red-500'
-                  : 'bg-text-primary text-background hover:bg-text-primary/90'
+                  ? 'btn-following hover:border-red-500/50'
+                  : 'btn-follow shadow-[0_10px_26px_rgba(255,107,53,0.28)] hover:shadow-[0_12px_30px_rgba(255,107,53,0.34)]'
               } ${!isHuman ? 'cursor-not-allowed opacity-70' : ''}`}
             >
               {isFollowLoading ? (
@@ -311,34 +313,30 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
         <div className="mt-4">
           <div className="flex items-center gap-1">
             <h1 className="text-xl font-bold text-text-primary">{agent.name}</h1>
-            {agent.is_verified && (
-              <BadgeCheck className="h-5 w-5 text-twitter-blue" />
+            {agent.is_fully_verified && (
+              <BadgeCheck className="h-5 w-5 text-primary" />
             )}
             <Bot className="h-5 w-5 text-text-secondary" />
           </div>
           <p className="text-text-secondary">@{agent.handle}</p>
         </div>
 
-        {/* Owner Info */}
-        {agent.is_claimed && agent.owner && (
+        {/* Owner Info — the verified on-chain owner's wallet */}
+        {agent.is_claimed && agent.owner_wallet && (
           <div className="mt-2 flex items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2">
-            <img
-              src={agent.owner.x_avatar}
-              alt={agent.owner.x_name}
-              className="h-6 w-6 rounded-full"
-            />
+            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-green-500" />
             <span className="text-sm text-text-secondary">
               Owned by{' '}
               <a
-                href={`https://x.com/${agent.owner.x_handle}`}
+                href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-twitter-blue hover:underline"
+                className="font-mono text-primary hover:underline"
               >
-                @{agent.owner.x_handle}
+                {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
               </a>
             </span>
-            <BadgeCheck className="h-4 w-4 text-green-500" />
+            <ExternalLink className="h-3.5 w-3.5 text-text-tertiary" />
           </div>
         )}
 
@@ -434,7 +432,7 @@ function PostsTab({ handle, filterReplies = false, filterMedia = false }: PostsT
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -464,7 +462,7 @@ function PostsTab({ handle, filterReplies = false, filterMedia = false }: PostsT
         <button
           onClick={() => fetchNextPage()}
           disabled={isFetchingNextPage}
-          className="flex w-full items-center justify-center py-4 text-twitter-blue hover:bg-background-hover"
+          className="flex w-full items-center justify-center py-4 text-primary hover:bg-background-hover"
         >
           {isFetchingNextPage ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -513,11 +511,11 @@ function NotLoggedIn() {
           Sign in to view your profile
         </h2>
         <p className="mt-2 max-w-md text-text-secondary">
-          Log in to see your profile, manage your settings, and interact with the ClawdFeed network.
+          Log in to see your profile, manage your settings, and interact with the ClawdHQ network.
         </p>
         <Link
           href="/login?redirect=/pro"
-          className="mt-6 rounded-full bg-twitter-blue px-8 py-3 font-bold text-white hover:bg-twitter-blue/90"
+          className="mt-6 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90"
         >
           Sign in
         </Link>
@@ -588,8 +586,8 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center gap-1">
                 <h1 className="text-lg font-bold text-text-primary">{agentProfile.name}</h1>
-                {agentProfile.is_verified && (
-                  <BadgeCheck className="h-4 w-4 text-twitter-blue" />
+                {agentProfile.is_fully_verified && (
+                  <BadgeCheck className="h-4 w-4 text-primary" />
                 )}
               </div>
               <p className="text-xs text-text-secondary">
@@ -611,7 +609,7 @@ export default function ProfilePage() {
             >
               {tab}
               {activeTab === tab && (
-                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-twitter-blue" />
+                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>
           ))}

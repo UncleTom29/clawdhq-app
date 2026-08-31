@@ -27,7 +27,7 @@ export function MessageSkeleton({ isMe }: { isMe: boolean }) {
     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-4 animate-pulse`}>
       <div
         className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-          isMe ? 'bg-twitter-blue/50' : 'bg-background-tertiary'
+          isMe ? 'bg-primary/50' : 'bg-background-tertiary'
         }`}
       >
         <div className="h-4 w-32 rounded bg-background-secondary" />
@@ -54,7 +54,7 @@ export function MessageBubble({ message, isFromUser, showTime }: MessageBubblePr
       <div
         className={`group relative max-w-[70%] rounded-2xl px-4 py-2 ${
           isFromUser
-            ? 'bg-twitter-blue text-white'
+            ? 'bg-primary text-white'
             : 'bg-background-tertiary text-text-primary'
         }`}
       >
@@ -141,8 +141,8 @@ export function AgentHeader({ agent }: AgentHeaderProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="truncate font-bold text-text-primary">{agent.name}</span>
-          {agent.is_verified && (
-            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+          {agent.is_fully_verified && (
+            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
           )}
           <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
         </div>
@@ -207,19 +207,19 @@ export function MessageInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="sticky bottom-0 border-t border-border bg-background p-4"
+      className="sticky bottom-0 border-t border-border bg-background-primary p-4"
     >
       <div className="flex items-end gap-2 rounded-2xl border border-border-light bg-background-secondary px-4 py-2">
         {/* Attachment buttons */}
         <button
           type="button"
-          className="flex-shrink-0 text-twitter-blue hover:text-twitter-blue/80"
+          className="flex-shrink-0 text-primary hover:text-primary/80"
         >
           <ImageIcon className="h-5 w-5" />
         </button>
         <button
           type="button"
-          className="flex-shrink-0 text-twitter-blue hover:text-twitter-blue/80"
+          className="flex-shrink-0 text-primary hover:text-primary/80"
         >
           <Smile className="h-5 w-5" />
         </button>
@@ -249,7 +249,7 @@ export function MessageInput({
         <button
           type="submit"
           disabled={!content.trim() || disabled || isPending || isOverLimit}
-          className="flex-shrink-0 text-twitter-blue transition-colors hover:text-twitter-blue/80 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-shrink-0 text-primary transition-colors hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -268,7 +268,7 @@ export function MessageInput({
 
 export function ProGateInline() {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-8 border-t border-border bg-background">
+    <div className="flex flex-col items-center justify-center px-4 py-8 border-t border-border bg-background-primary">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700">
         <Lock className="h-6 w-6 text-white" />
       </div>
@@ -295,7 +295,7 @@ export function ProGateInline() {
 
 export function DmDisabledInline() {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-8 border-t border-border bg-background">
+    <div className="flex flex-col items-center justify-center px-4 py-8 border-t border-border bg-background-primary">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background-tertiary">
         <MessageCircleOff className="h-6 w-6 text-text-secondary" />
       </div>
@@ -391,7 +391,7 @@ export function MessageThread({
             <p>Failed to load messages.</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-2 text-twitter-blue hover:underline"
+              className="mt-2 text-primary hover:underline"
             >
               Try again
             </button>
@@ -404,7 +404,7 @@ export function MessageThread({
             <button
               onClick={onLoadMore}
               disabled={isFetchingNextPage}
-              className="text-sm text-twitter-blue hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               {isFetchingNextPage ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -20,17 +20,26 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 1337,
     },
-    avalancheFuji: {
-      url: process.env.AVALANCHE_FUJI_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc",
-      chainId: 43113,
-      accounts: process.env.AVALANCHE_PRIVATE_KEY ? [process.env.AVALANCHE_PRIVATE_KEY] : [],
+    arcTestnet: {
+      url: process.env.ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.network",
+      chainId: 5042002,
+      accounts: process.env.ARC_PRIVATE_KEY ? [process.env.ARC_PRIVATE_KEY] : [],
     },
   },
   etherscan: {
     apiKey: {
-      avalancheFuji: process.env.SNOWTRACE_API_KEY || "",
-      avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY || "",
+      arcTestnet: process.env.ARCSCAN_API_KEY || "arcscan",
     },
+    customChains: [
+      {
+        network: "arcTestnet",
+        chainId: 5042002,
+        urls: {
+          apiURL: "https://testnet.arcscan.app/api",
+          browserURL: "https://testnet.arcscan.app",
+        },
+      },
+    ],
   },
 };
 

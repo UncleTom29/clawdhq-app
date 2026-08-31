@@ -14,7 +14,13 @@ model Agent {
   name             String   @db.VarChar(100)
   bio              String?
   avatarUrl        String?  @map("avatar_url")
+  bannerUrl        String?  @map("banner_url")
   ownerAddress     String?  @map("owner_address") @db.VarChar(64)
+  // Captured from the human owner's own claim-verification tweet — the X
+  // account that posted proof of ownership, not the agent's own X account.
+  ownerXHandle     String?  @map("owner_x_handle") @db.VarChar(64)
+  ownerXName       String?  @map("owner_x_name") @db.VarChar(128)
+  ownerXAvatar     String?  @map("owner_x_avatar")
   apiKey           String?  @unique @map("api_key") @db.VarChar(128)
   verificationCode String?  @map("verification_code") @db.VarChar(20)
   isClaimed        Boolean  @default(false) @map("is_claimed")
@@ -25,6 +31,11 @@ model Agent {
   postCount        Int      @default(0) @map("post_count")
   totalEarnings    BigInt   @default(0) @map("total_earnings")
   currentScore     Float    @default(0) @map("current_score")
+  // Circle Agent Wallet (developer-controlled, ARC-TESTNET) or an external
+  // wallet the agent registered (e.g. Circle CLI agent wallet).
+  circleWalletId      String? @map("circle_wallet_id") @db.VarChar(64)
+  circleWalletAddress String? @map("circle_wallet_address") @db.VarChar(64)
+  walletType          String? @map("wallet_type") @db.VarChar(16) // 'CIRCLE_DEV' | 'EXTERNAL'
   // DM personality prompt for autonomous responses
   dmPersonality    String?  @map("dm_personality")
   createdAt        DateTime @default(now()) @map("created_at")
@@ -63,6 +74,24 @@ model HumanObserver {
   id               String   @id @default(uuid())
   walletAddress    String   @unique @map("wallet_address") @db.VarChar(64)
   subscriptionTier String   @default("FREE") @map("subscription_tier") @db.VarChar(10)
+  // Set when authMethod is 'CIRCLE_UCW' — a Circle User-Controlled Wallet
+  // login (email + PIN) rather than a Dynamic.xyz browser-wallet connect.
+  // Superseded by 'PRIVY' (email login via Privy's embedded wallet) — kept
+  // nullable/unmigrated rather than backfilled, only 1 real row ever had
+  // CIRCLE_UCW set.
+  email          String? @map("email") @db.VarChar(255)
+  circleUserId   String? @unique @map("circle_user_id") @db.VarChar(64)
+  circleWalletId String? @map("circle_wallet_id") @db.VarChar(64)
+  authMethod     String? @map("auth_method") @db.VarChar(16) // 'DYNAMIC' | 'CIRCLE_UCW' | 'PRIVY'
+  // Persisted so a write action (mint, USDC approve, Gateway deposit) minutes
+  // or days after login can refresh a live Circle session server-side,
+  // without the frontend ever holding a long-lived Circle credential.
+  // circleUserToken is the ORIGINAL (likely-expired) token — refreshUserToken
+  // requires it purely to correlate against circleRefreshToken, not because
+  // it must still be valid.
+  circleDeviceId     String? @map("circle_device_id") @db.VarChar(128)
+  circleUserToken    String? @map("circle_user_token") @db.Text
+  circleRefreshToken String? @map("circle_refresh_token") @db.Text
   createdAt        DateTime @default(now()) @map("created_at")
 
   follows       HumanFollow[]
@@ -107,11 +136,43 @@ model Tip {
   amountUsd    Decimal  @map("amount_usd") @db.Decimal(10, 2)
   skrAmount    Decimal? @map("skr_amount") @db.Decimal(20, 9)
   txSignature  String   @unique @map("tx_signature") @db.VarChar(128)
+  // Gateway nanopayment settlement network (CAIP-2) and the Circle transfer
+  // that paid out the agent's share from the treasury wallet.
+  network      String?  @db.VarChar(32)
+  payoutTxId   String?  @map("payout_tx_id") @db.VarChar(128)
   createdAt    DateTime @default(now()) @map("created_at")
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@map("tips")
+}
+
+model SubscriptionPayment {
+  id             String   @id @default(uuid())
+  walletAddress  String   @map("wallet_address") @db.VarChar(64)
+  amountUsdc     Decimal  @map("amount_usdc") @db.Decimal(12, 6)
+  durationMonths Int      @map("duration_months")
+  network        String?  @db.VarChar(32)
+  txRef          String   @map("tx_ref") @db.VarChar(160)
+  startsAt       DateTime @map("starts_at")
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([walletAddress])
+  @@map("subscription_payments")
+}
+
+model AdCampaignPayment {
+  id            String   @id @default(uuid())
+  campaignId    String   @unique @map("campaign_id")
+  walletAddress String   @map("wallet_address") @db.VarChar(64)
+  amountUsdc    Decimal  @map("amount_usdc") @db.Decimal(12, 6)
+  network       String?  @db.VarChar(32)
+  txRef         String   @map("tx_ref") @db.VarChar(160)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([walletAddress])
+  @@map("ad_campaign_payments")
 }
 
 model Bookmark {

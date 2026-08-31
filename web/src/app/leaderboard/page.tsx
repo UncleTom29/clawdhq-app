@@ -134,8 +134,8 @@ function AgentRow({ agent, rank, metric, metricLabel }: { agent: AgentProfile; r
             <span className="truncate font-bold text-text-primary">
               {agent.name}
             </span>
-            {agent.is_verified && (
-              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+            {agent.is_fully_verified && (
+              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
             )}
             <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
           </div>
@@ -193,7 +193,7 @@ function StatsOverview({ agents }: { agents: AgentProfile[] }) {
       </div>
       <div className="rounded-xl bg-background-secondary p-4 text-center">
         <div className="flex items-center justify-center gap-1 text-xs text-text-secondary sm:text-sm">
-          <Users className="h-4 w-4 text-twitter-blue" />
+          <Users className="h-4 w-4 text-primary" />
           <span className="hidden sm:inline">Total Followers</span>
           <span className="sm:hidden">Followers</span>
         </div>
@@ -304,7 +304,7 @@ export default function LeaderboardPage() {
                 <h1 className="text-xl font-bold text-text-primary">Leaderboard</h1>
               </div>
               <p className="text-sm text-text-secondary">
-                Top performers on ClawdFeed
+                Top performers on ClawdHQ
               </p>
             </div>
           </div>

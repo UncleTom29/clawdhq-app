@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Message Hooks - React Query hooks for messaging
+// ClawdHQ Message Hooks - React Query hooks for messaging
 // ---------------------------------------------------------------------------
 
 import {

@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   User,
-  Users,
-  Bookmark,
   Megaphone,
   Settings as SettingsIcon,
   Star,
@@ -21,8 +19,8 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useAccount, useDisconnect } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
+import { useHumanAuth } from '@/hooks/use-human-auth';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/providers/auth-provider';
 import ProBadge from '@/components/ProBadge';
@@ -37,8 +35,8 @@ interface UserMenuDropdownProps {
 export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSettings }: UserMenuDropdownProps) {
   const router = useRouter();
   const { address } = useAccount();
-  const { disconnect } = useDisconnect();
   const { user, isHuman, isAgent, isPro, logout, isAuthenticated } = useAuth();
+  const { login } = useHumanAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -82,24 +80,13 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
   }, [isOpen, onClose, anchorEl]);
 
   // Handle logout
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
     if (!showLogoutConfirm) {
       setShowLogoutConfirm(true);
       return;
     }
 
-    // Clear auth
-    apiClient.setToken(null);
-    localStorage.removeItem('clawdfeed_auth_token');
-    localStorage.removeItem('clawdfeed_auth_type');
-    
-    // Disconnect wallet
-    disconnect();
-    
-    // Logout from auth provider
     logout();
-    
-    // Redirect to landing
     router.push('/');
     onClose();
   };
@@ -124,27 +111,22 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       }}
     >
-      {/* If unauthenticated, show Connect Wallet */}
+      {/* If unauthenticated, show Login */}
       {!isAuthenticated ? (
         <div className="p-4">
-          <h3 className="mb-3 text-sm font-bold text-text-primary">Connect Your Wallet</h3>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">Login to ClawdHQ</h3>
           <p className="mb-4 text-xs text-text-secondary">
-            Connect your wallet to access all features including notifications, messages, bookmarks, and more.
+            Sign in to access all features including notifications, messages, bookmarks, and more.
           </p>
-          <ConnectButton.Custom>
-            {({ openConnectModal }) => (
-              <button
-                onClick={() => {
-                  openConnectModal();
-                  onClose();
-                }}
-                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#FF6B35' }}
-              >
-                Connect Wallet
-              </button>
-            )}
-          </ConnectButton.Custom>
+          <button
+            onClick={() => {
+              login();
+              onClose();
+            }}
+            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
+          >
+            Login
+          </button>
         </div>
       ) : (
         <>
@@ -199,16 +181,6 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
                   icon={User}
                   label="My Profile"
                   onClick={() => handleItemClick('/profile')}
-                />
-                <MenuItem
-                  icon={Users}
-                  label="Following"
-                  onClick={() => handleItemClick('/following')}
-                />
-                <MenuItem
-                  icon={Bookmark}
-                  label="Bookmarks"
-                  onClick={() => handleItemClick('/bookmarks')}
                 />
                 <MenuItem
                   icon={Megaphone}
@@ -292,15 +264,12 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
             <MenuItem
               icon={HelpCircle}
               label="Help Center"
-              onClick={() => window.open('https://help.clawdfeed.com', '_blank')}
+              onClick={() => handleItemClick('/help')}
             />
             <MenuItem
               icon={Keyboard}
               label="Keyboard Shortcuts"
-              onClick={() => {
-                // TODO: Open keyboard shortcuts modal
-                console.log('Open keyboard shortcuts modal');
-              }}
+              onClick={() => handleItemClick('/keyboard-shortcuts')}
             />
 
             <MenuDivider />
@@ -309,14 +278,14 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
             {showLogoutConfirm ? (
               <div className="px-4 py-2">
                 <p className="mb-2 text-sm text-text-secondary">
-                  Are you sure you want to disconnect?
+                  Are you sure you want to log out?
                 </p>
                 <div className="flex gap-2">
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     className="flex-1 rounded-full bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
                   >
-                    Disconnect
+                    Log Out
                   </button>
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
@@ -329,8 +298,8 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
             ) : (
               <MenuItem
                 icon={LogOut}
-                label={`Disconnect ${truncatedAddress}`}
-                onClick={handleLogout}
+                label={`Log Out ${truncatedAddress}`}
+                onClick={handleLogoutClick}
               />
             )}
           </div>

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(authUrl.toString());
 
   // HttpOnly cookie for the OAuth state (5 min expiry)
-  response.cookies.set('clawdfeed_oauth', oauthData, {
+  response.cookies.set('clawdhq_oauth', oauthData, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Read the OAuth state cookie
-    const oauthCookie = request.cookies.get('clawdfeed_oauth')?.value;
+    const oauthCookie = request.cookies.get('clawdhq_oauth')?.value;
     if (!oauthCookie) {
       return NextResponse.json(
         { error: 'OAuth session expired. Please try again.' },
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Set the auth cookie
-    res.cookies.set('clawdfeed_auth', authPayload, {
+    res.cookies.set('clawdhq_auth', authPayload, {
       httpOnly: false, // Needs to be readable by client JS
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Clear the OAuth state cookie
-    res.cookies.delete('clawdfeed_oauth');
+    res.cookies.delete('clawdhq_oauth');
 
     return res;
   } catch (err) {

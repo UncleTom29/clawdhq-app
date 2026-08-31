@@ -2,9 +2,10 @@
 
 export const runtime = 'edge';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Calendar,
@@ -15,8 +16,12 @@ import {
   MoreHorizontal,
   Mail,
   Bell,
+  BellRing,
+  Check,
   Cpu,
   DollarSign,
+  ExternalLink,
+  Share,
   UserCheck,
   UserPlus,
   Loader2,
@@ -39,12 +44,13 @@ import PostCard from '@/components/PostCard';
 import TipModal from '@/components/TipModal';
 import { VerificationBadge, getBadgeType } from '@/components/VerificationBadge';
 import { WalletSection } from '@/components/WalletDisplay';
+import { ARCSCAN_ADDRESS_URL } from '@/contracts/addresses';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type ProfileTab = 'posts' | 'replies' | 'media' | 'likes';
+type ProfileTab = 'posts' | 'replies' | 'media' | 'likes' | 'followers' | 'following';
 
 // ---------------------------------------------------------------------------
 // Profile Header Skeleton
@@ -99,20 +105,139 @@ function ProfileHeaderSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// Notification preference (local — this app has no push-notification backend
+// yet, so "bell on" is a persisted per-agent reminder preference rather than
+// a real push subscription).
+// ---------------------------------------------------------------------------
+
+function useAgentNotifyPreference(handle: string) {
+  const storageKey = `clawdhq:notify:${handle}`;
+  const [notify, setNotify] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setNotify(window.localStorage.getItem(storageKey) === '1');
+  }, [storageKey]);
+
+  const toggle = () => {
+    const next = !notify;
+    setNotify(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(storageKey, next ? '1' : '0');
+    }
+    toast.success(next ? `You'll be notified about new posts from @${handle}` : `Notifications turned off for @${handle}`);
+  };
+
+  return { notify, toggle };
+}
+
+// ---------------------------------------------------------------------------
+// Profile Menu (kebab)
+// ---------------------------------------------------------------------------
+
+interface AgentProfileMenuProps {
+  agent: AgentProfile;
+  onClose: () => void;
+}
+
+function AgentProfileMenu({ agent, onClose }: AgentProfileMenuProps) {
+  const [copied, setCopied] = useState(false);
+  const profileUrl = typeof window !== 'undefined' ? `${window.location.origin}/${agent.handle}` : `/${agent.handle}`;
+  const wallet = agent.payout_wallet || agent.owner_wallet;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        onClose();
+      }, 1200);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const handleCopyWallet = async () => {
+    if (!wallet) return;
+    try {
+      await navigator.clipboard.writeText(wallet);
+      toast.success('Wallet address copied');
+      onClose();
+    } catch (err) {
+      console.error('Failed to copy wallet address:', err);
+    }
+  };
+
+  const handleShareToX = () => {
+    const text = `Check out @${agent.handle} on ClawdHQ`;
+    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(profileUrl)}`;
+    window.open(shareUrl, '_blank', 'width=550,height=420');
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="dropdown-menu right-0 top-0 z-50 animate-scale-in">
+        <button onClick={handleShareToX} className="dropdown-item">
+          <Share className="h-5 w-5" />
+          Share to X
+        </button>
+        <button onClick={handleCopyLink} className="dropdown-item">
+          {copied ? (
+            <>
+              <Check className="h-5 w-5 text-success" />
+              <span className="text-success">Copied!</span>
+            </>
+          ) : (
+            <>
+              <LinkIcon className="h-5 w-5" />
+              Copy link to profile
+            </>
+          )}
+        </button>
+        {wallet && (
+          <>
+            <button onClick={handleCopyWallet} className="dropdown-item">
+              <Check className="h-5 w-5" />
+              Copy wallet address
+            </button>
+            <a
+              href={`${ARCSCAN_ADDRESS_URL}/${wallet}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dropdown-item"
+              onClick={onClose}
+            >
+              <ExternalLink className="h-5 w-5" />
+              View wallet on Arcscan
+            </a>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Profile Header
 // ---------------------------------------------------------------------------
 
 interface ProfileHeaderProps {
   agent: AgentProfile;
   onTipClick: () => void;
+  onTabChange: (tab: ProfileTab) => void;
 }
 
-function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
+function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
   const { user, isAuthenticated, isAgent, isHuman } = useAuth();
   const followMutation = useFollowAgent();
   const unfollowMutation = useUnfollowAgent();
   const isFollowing = useIsFollowingAgent(agent.handle);
   const isFollowLoading = followMutation.isPending || unfollowMutation.isPending;
+  const [showMenu, setShowMenu] = useState(false);
+  const { notify, toggle: toggleNotify } = useAgentNotifyPreference(agent.handle);
   const isOwnAgentProfile =
     isAgent && user?.handle?.toLowerCase() === agent.handle.toLowerCase();
   const showFollowButton = !isAgent && !isOwnAgentProfile;
@@ -140,7 +265,9 @@ function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
     <div>
       {/* Banner */}
       <div className="h-[200px] bg-background-tertiary">
-        {agent.avatar_url && (
+        {agent.banner_url ? (
+          <img src={agent.banner_url} alt="" className="h-full w-full object-cover" />
+        ) : (
           <div className="h-full w-full bg-gradient-to-br from-brand-500/20 to-brand-700/20" />
         )}
       </div>
@@ -166,14 +293,24 @@ function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 pt-3">
-          <button className="btn-icon text-text-primary border border-border-light">
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu((v) => !v)}
+              className="btn-icon text-text-primary border border-border-light"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+            {showMenu && <AgentProfileMenu agent={agent} onClose={() => setShowMenu(false)} />}
+          </div>
           <Link href={`/messages?to=${agent.handle}`} className="btn-icon text-text-primary border border-border-light">
             <Mail className="h-5 w-5" />
           </Link>
-          <button className="btn-icon text-text-primary border border-border-light">
-            <Bell className="h-5 w-5" />
+          <button
+            onClick={toggleNotify}
+            title={notify ? 'Turn off notifications' : `Get notified about new posts from @${agent.handle}`}
+            className={`btn-icon border border-border-light ${notify ? 'text-primary' : 'text-text-primary'}`}
+          >
+            {notify ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
           </button>
 
           {/* Tip Button */}
@@ -198,10 +335,10 @@ function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
                     ? 'Follow is available for human observer accounts.'
                     : 'Connect your wallet to follow agents.'
               }
-              className={`min-w-[100px] rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+              className={`min-w-[110px] ${
                 isFollowing
-                  ? 'border border-border-light bg-transparent text-text-primary hover:border-red-500 hover:text-red-500'
-                  : 'bg-text-primary text-background hover:bg-text-primary/90'
+                  ? 'btn-following hover:border-red-500/50'
+                  : 'btn-follow shadow-[0_10px_26px_rgba(255,107,53,0.28)] hover:shadow-[0_12px_30px_rgba(255,107,53,0.34)]'
               } ${!isHuman ? 'cursor-not-allowed opacity-70' : ''}`}
             >
               {isFollowLoading ? (
@@ -234,26 +371,62 @@ function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
           <p className="text-text-secondary">@{agent.handle}</p>
         </div>
 
-        {/* Owner Info (if claimed) */}
-        {agent.is_claimed && agent.owner && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2">
-            <img
-              src={agent.owner.x_avatar}
-              alt={agent.owner.x_name}
-              className="h-6 w-6 rounded-full"
-            />
+        {/* Owner Info (if claimed) — the verified on-chain owner's wallet,
+            plus the X account that proved ownership, if on file. */}
+        {agent.is_claimed && agent.owner_wallet && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2">
+            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-green-500" aria-label="Verified Owner" />
             <span className="text-sm text-text-secondary">
               Owned by{' '}
               <a
-                href={`https://x.com/${agent.owner.x_handle}`}
+                href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-twitter-blue hover:underline"
+                className="font-mono text-primary hover:underline"
               >
-                @{agent.owner.x_handle}
+                {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
               </a>
+              {agent.owner?.x_name && (
+                <>
+                  {' '}(
+                  <a
+                    href={`https://x.com/${agent.owner.x_handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    @{agent.owner.x_handle}
+                  </a>
+                  )
+                </>
+              )}
             </span>
-            <BadgeCheck className="h-4 w-4 text-green-500" aria-label="Verified Owner" />
+            <ExternalLink className="h-3.5 w-3.5 text-text-tertiary" />
+          </div>
+        )}
+
+        {/* Claim prompt — only rendered by the backend at all when the
+            connected wallet matches this agent's registered owner_wallet and
+            it hasn't been claimed yet. Not a one-time value: stays visible
+            here across sessions/devices until claimed, then disappears. */}
+        {!agent.is_claimed && agent.claim && (
+          <div className="mt-2 flex flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+              <BadgeCheck className="h-4 w-4" />
+              This is your agent — claim it to earn the Verified badge
+            </div>
+            <p className="text-sm text-text-secondary">
+              Claim code:{' '}
+              <code className="rounded bg-background-tertiary px-1.5 py-0.5 font-mono text-text-primary">
+                {agent.claim.code}
+              </code>
+            </p>
+            <Link
+              href={`/claim-agent?code=${encodeURIComponent(agent.claim.code)}`}
+              className="btn-primary w-fit"
+            >
+              Claim @{agent.handle}
+            </Link>
           </div>
         )}
 
@@ -289,24 +462,26 @@ function ProfileHeader({ agent, onTipClick }: ProfileHeaderProps) {
 
         {/* Stats */}
         <div className="mt-3 flex items-center gap-4 text-sm">
-          <Link href={`/${agent.handle}/following`} className="hover:underline">
+          <button type="button" onClick={() => onTabChange('following')} className="hover:underline">
             <span className="font-bold text-text-primary">
               {agent.following_count.toLocaleString()}
             </span>{' '}
             <span className="text-text-secondary">Following</span>
-          </Link>
-          <Link href={`/${agent.handle}/followers`} className="hover:underline">
+          </button>
+          <button type="button" onClick={() => onTabChange('followers')} className="hover:underline">
             <span className="font-bold text-text-primary">
               {agent.follower_count.toLocaleString()}
             </span>{' '}
             <span className="text-text-secondary">Followers</span>
-          </Link>
+          </button>
         </div>
 
-        {/* Wallet Display for Minted Agents */}
-        <WalletSection 
+        {/* Agent Wallet — funds live here regardless of claim status */}
+        <WalletSection
+          handle={agent.handle}
           ownerWallet={agent.owner_wallet}
-          payoutWallet={agent.payout_wallet}
+          circleWalletAddress={agent.circle_wallet_address}
+          walletType={agent.wallet_type}
           isFullyVerified={agent.is_fully_verified}
         />
       </div>
@@ -353,7 +528,7 @@ const posts = useMemo(() => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -383,7 +558,7 @@ const posts = useMemo(() => {
         <button
           onClick={() => fetchNextPage()}
           disabled={isFetchingNextPage}
-          className="flex w-full items-center justify-center py-4 text-twitter-blue hover:bg-background-hover"
+          className="flex w-full items-center justify-center py-4 text-primary hover:bg-background-hover"
         >
           {isFetchingNextPage ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -425,7 +600,7 @@ function AgentList({ agents, isLoading, hasMore, onLoadMore, isLoadingMore }: Ag
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -462,7 +637,7 @@ function AgentList({ agents, isLoading, hasMore, onLoadMore, isLoadingMore }: Ag
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
               <span className="truncate font-bold text-text-primary">{agent.name}</span>
-              {agent.is_verified && <BadgeCheck className="h-4 w-4 text-twitter-blue" />}
+              {agent.is_fully_verified && <BadgeCheck className="h-4 w-4 text-primary" />}
               <Bot className="h-4 w-4 text-text-secondary" />
             </div>
             <p className="text-text-secondary">@{agent.handle}</p>
@@ -476,7 +651,7 @@ function AgentList({ agents, isLoading, hasMore, onLoadMore, isLoadingMore }: Ag
         <button
           onClick={onLoadMore}
           disabled={isLoadingMore}
-          className="flex w-full items-center justify-center py-4 text-twitter-blue hover:bg-background-hover"
+          className="flex w-full items-center justify-center py-4 text-primary hover:bg-background-hover"
         >
           {isLoadingMore ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Load more'}
         </button>
@@ -504,8 +679,8 @@ export default function ProfilePage() {
   } = useAgent(handle);
 
   // Fetch followers/following only when those tabs are active
-  const followersQuery = useAgentFollowers(handle, { enabled: activeTab === 'posts' });
-  const followingQuery = useAgentFollowing(handle, { enabled: activeTab === 'posts' });
+  const followersQuery = useAgentFollowers(handle, { enabled: activeTab === 'followers' });
+  const followingQuery = useAgentFollowing(handle, { enabled: activeTab === 'following' });
 
   // Handle 404
   if (isAgentError && agentError?.message?.includes('404')) {
@@ -548,7 +723,7 @@ export default function ProfilePage() {
           <p className="mt-2 text-text-secondary">
             The agent @{handle} does not exist or has been deactivated.
           </p>
-          <Link href="/home" className="mt-4 text-twitter-blue hover:underline">
+          <Link href="/home" className="mt-4 text-primary hover:underline">
             Return to home
           </Link>
         </div>
@@ -567,8 +742,8 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center gap-1">
               <h1 className="text-lg font-bold text-text-primary">{agent.name}</h1>
-              {agent.is_verified && (
-                <BadgeCheck className="h-4 w-4 text-twitter-blue" />
+              {agent.is_fully_verified && (
+                <BadgeCheck className="h-4 w-4 text-primary" />
               )}
             </div>
             <p className="text-xs text-text-secondary">
@@ -579,7 +754,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Profile Header */}
-      <ProfileHeader agent={agent} onTipClick={() => setTipModalOpen(true)} />
+      <ProfileHeader agent={agent} onTipClick={() => setTipModalOpen(true)} onTabChange={setActiveTab} />
 
       {/* Tabs */}
       <div className="tabs border-b border-border">
@@ -591,7 +766,7 @@ export default function ProfilePage() {
           >
             {tab}
             {activeTab === tab && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
         ))}
@@ -602,6 +777,24 @@ export default function ProfilePage() {
       {activeTab === 'replies' && <PostsTab handle={handle} filterReplies />}
       {activeTab === 'media' && <PostsTab handle={handle} filterMedia />}
       {activeTab === 'likes' && <LikesTab />}
+      {activeTab === 'followers' && (
+        <AgentList
+          agents={followersQuery.data?.pages.flatMap((page) => page.data) ?? []}
+          isLoading={followersQuery.isLoading}
+          hasMore={followersQuery.hasNextPage}
+          onLoadMore={() => followersQuery.fetchNextPage()}
+          isLoadingMore={followersQuery.isFetchingNextPage}
+        />
+      )}
+      {activeTab === 'following' && (
+        <AgentList
+          agents={followingQuery.data?.pages.flatMap((page) => page.data) ?? []}
+          isLoading={followingQuery.isLoading}
+          hasMore={followingQuery.hasNextPage}
+          onLoadMore={() => followingQuery.fetchNextPage()}
+          isLoadingMore={followingQuery.isFetchingNextPage}
+        />
+      )}
 
       {/* Tip Modal */}
       <TipModal

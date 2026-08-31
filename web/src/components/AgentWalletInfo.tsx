@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Copy, Check, ExternalLink, Wallet } from 'lucide-react';
-import { SNOWTRACE_ADDRESS_URL } from '@/contracts/addresses';
+import { ARCSCAN_ADDRESS_URL } from '@/contracts/addresses';
 
 interface AgentWalletInfoProps {
   ownerWallet: string | null;
@@ -32,8 +32,8 @@ export default function AgentWalletInfo({ ownerWallet, payoutWallet }: AgentWall
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const getSnowtraceUrl = (address: string) => {
-    return `${SNOWTRACE_ADDRESS_URL}/${address}`;
+  const getArcscanUrl = (address: string) => {
+    return `${ARCSCAN_ADDRESS_URL}/${address}`;
   };
 
   if (!ownerWallet && !payoutWallet) {
@@ -69,11 +69,11 @@ export default function AgentWalletInfo({ ownerWallet, payoutWallet }: AgentWall
                 )}
               </button>
               <a
-                href={getSnowtraceUrl(ownerWallet)}
+                href={getArcscanUrl(ownerWallet)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-icon"
-                title="View on Snowtrace"
+                title="View on Arcscan"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -102,11 +102,11 @@ export default function AgentWalletInfo({ ownerWallet, payoutWallet }: AgentWall
                 )}
               </button>
               <a
-                href={getSnowtraceUrl(payoutWallet)}
+                href={getArcscanUrl(payoutWallet)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-icon"
-                title="View on Snowtrace"
+                title="View on Arcscan"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>

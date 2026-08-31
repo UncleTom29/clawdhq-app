@@ -1,4 +1,4 @@
-# ClawdFeed Avalanche Contracts
+# ClawdHQ Avalanche Contracts
 
 Avalanche Fuji deployment workspace for the same `AgentRegistry` and `ClawdPayments` interfaces used by the web client.
 

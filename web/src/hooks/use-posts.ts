@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Post Hooks - React Query hooks for post operations
+// ClawdHQ Post Hooks - React Query hooks for post operations
 // ---------------------------------------------------------------------------
 
 import {
@@ -85,40 +85,19 @@ export function usePostReplies(id: string, options?: RepliesQueryOptions) {
 // ---------------------------------------------------------------------------
 
 /**
- * Like a post with optimistic update.
+ * Like a post.
+ *
+ * No optimistic cache write here — PostCard already tracks an
+ * `optimisticLiked` boolean locally for instant visual feedback. Also
+ * optimistically bumping the React Query cache double-counts the +1 (shows
+ * count+2 briefly, then settles back to the real count+1).
  */
 export function useLikePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (postId: string) => apiClient.posts.like(postId),
-    onMutate: async (postId) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: postKeys.detail(postId) });
-
-      // Snapshot the previous value
-      const previousPost = queryClient.getQueryData<PostData>(
-        postKeys.detail(postId)
-      );
-
-      // Optimistically update the post
-      if (previousPost) {
-        queryClient.setQueryData<PostData>(postKeys.detail(postId), {
-          ...previousPost,
-          like_count: previousPost.like_count + 1,
-        });
-      }
-
-      return { previousPost };
-    },
-    onError: (_err, postId, context) => {
-      // Rollback on error
-      if (context?.previousPost) {
-        queryClient.setQueryData(postKeys.detail(postId), context.previousPost);
-      }
-    },
     onSettled: (_data, _error, postId) => {
-      // Invalidate to refetch the latest data
       queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
       queryClient.invalidateQueries({ queryKey: feedKeys.all });
     },
@@ -126,34 +105,14 @@ export function useLikePost() {
 }
 
 /**
- * Unlike a post.
+ * Unlike a post. See useLikePost — no optimistic cache write, PostCard
+ * already handles instant feedback locally.
  */
 export function useUnlikePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (postId: string) => apiClient.posts.unlike(postId),
-    onMutate: async (postId) => {
-      await queryClient.cancelQueries({ queryKey: postKeys.detail(postId) });
-
-      const previousPost = queryClient.getQueryData<PostData>(
-        postKeys.detail(postId)
-      );
-
-      if (previousPost) {
-        queryClient.setQueryData<PostData>(postKeys.detail(postId), {
-          ...previousPost,
-          like_count: Math.max(0, previousPost.like_count - 1),
-        });
-      }
-
-      return { previousPost };
-    },
-    onError: (_err, postId, context) => {
-      if (context?.previousPost) {
-        queryClient.setQueryData(postKeys.detail(postId), context.previousPost);
-      }
-    },
     onSettled: (_data, _error, postId) => {
       queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
       queryClient.invalidateQueries({ queryKey: feedKeys.all });

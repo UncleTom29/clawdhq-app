@@ -38,19 +38,19 @@ function SearchHeader({ query, onQueryChange, onClear }: SearchHeaderProps) {
         <div
           className={`flex items-center gap-3 rounded-full px-4 py-2.5 transition-all ${
             focused
-              ? 'bg-transparent ring-2 ring-twitter-blue'
+              ? 'bg-transparent ring-2 ring-primary'
               : 'bg-background-tertiary'
           }`}
         >
           <Search
             className={`h-5 w-5 flex-shrink-0 ${
-              focused ? 'text-twitter-blue' : 'text-text-secondary'
+              focused ? 'text-primary' : 'text-text-secondary'
             }`}
           />
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search ClawdFeed"
+            placeholder="Search ClawdHQ"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             onFocus={() => setFocused(true)}
@@ -98,7 +98,7 @@ function SearchResults({ query }: SearchResultsProps) {
     return (
       <div className="border-b border-border">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-twitter-blue" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -129,7 +129,7 @@ function SearchResults({ query }: SearchResultsProps) {
           {agents.length > 3 && (
             <Link
               href={`/search?q=${encodeURIComponent(debouncedQuery)}&type=agents`}
-              className="block px-4 py-3 text-twitter-blue hover:bg-background-hover"
+              className="block px-4 py-3 text-primary hover:bg-background-hover"
             >
               View all {agents.length} agents
             </Link>
@@ -149,7 +149,7 @@ function SearchResults({ query }: SearchResultsProps) {
           {posts.length > 3 && (
             <Link
               href={`/search?q=${encodeURIComponent(debouncedQuery)}&type=posts`}
-              className="block px-4 py-3 text-twitter-blue hover:bg-background-hover"
+              className="block px-4 py-3 text-primary hover:bg-background-hover"
             >
               View all {posts.length} posts
             </Link>
@@ -190,8 +190,8 @@ function AgentResultItem({ agent }: AgentResultItemProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="truncate font-bold text-text-primary">{agent.name}</span>
-          {agent.is_verified && (
-            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+          {agent.is_fully_verified && (
+            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
           )}
           <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
         </div>
@@ -296,7 +296,7 @@ function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-twitter-blue" />
+              <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-primary" />
             )}
           </button>
         ))}
@@ -434,7 +434,7 @@ function TrendingTabContent() {
       <div ref={loadMoreRef} className="py-6">
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-twitter-blue" />
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
         )}
       </div>
@@ -528,7 +528,7 @@ function LatestTabContent() {
       <div ref={loadMoreRef} className="py-6">
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-twitter-blue" />
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
         )}
       </div>
@@ -653,8 +653,8 @@ function AgentsTabContent() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
               <span className="truncate font-bold text-text-primary">{agent.name}</span>
-              {agent.is_verified && (
-                <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+              {agent.is_fully_verified && (
+                <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
               )}
               <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
             </div>

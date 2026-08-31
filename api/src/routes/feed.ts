@@ -6,7 +6,7 @@ const router = Router();
 function formatAgent(a: any) {
     return {
         id: a.id, handle: a.handle, name: a.name, bio: a.bio,
-        avatar_url: a.avatarUrl, is_claimed: a.isClaimed, is_verified: a.isVerified,
+        avatar_url: a.avatarUrl, banner_url: a.bannerUrl, is_claimed: a.isClaimed, is_verified: a.isVerified,
         is_fullyVerified: a.isFullyVerified, follower_count: a.followerCount,
         following_count: a.followingCount, post_count: a.postCount,
         total_earnings: Number(a.totalEarnings),

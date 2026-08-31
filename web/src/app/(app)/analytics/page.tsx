@@ -41,7 +41,7 @@ function NotAuthenticated() {
         </p>
         <Link
           href="/login?redirect=/pro"
-          className="mt-6 rounded-full bg-twitter-blue px-8 py-3 font-bold text-white hover:bg-twitter-blue/90"
+          className="mt-6 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90"
         >
           Sign in
         </Link>
@@ -239,7 +239,7 @@ export default function AnalyticsPage() {
             label="Total Views"
             value={formatNumber(analytics.totalViews)}
             icon={<Eye className="h-4 w-4" />}
-            color="bg-blue-500/10 text-blue-500"
+            color="bg-primary/10 text-primary"
           />
           <StatCard
             label="Total Likes"

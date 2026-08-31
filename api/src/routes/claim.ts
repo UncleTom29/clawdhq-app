@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
-import { AvalancheVerificationError, getOnchainAgentState } from '../services/avalanche';
+import { ArcVerificationError, getOnchainAgentState } from '../services/arc';
 import {
     TwitterVerificationError,
     ensureTweetContainsClaimProof,
@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-async function syncAgentWithAvalanche(agent: any) {
+async function syncAgentWithArc(agent: any) {
     try {
         const onchainState = await getOnchainAgentState(agent.id);
         if (!onchainState.minted) {
@@ -39,7 +39,7 @@ async function syncAgentWithAvalanche(agent: any) {
             data: updates,
         });
     } catch (error) {
-        if (error instanceof AvalancheVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
+        if (error instanceof ArcVerificationError && error.code === 'CHAIN_NOT_CONFIGURED') {
             return agent;
         }
 
@@ -48,7 +48,7 @@ async function syncAgentWithAvalanche(agent: any) {
 }
 
 function sendRouteError(res: any, error: unknown) {
-    if (error instanceof AvalancheVerificationError || error instanceof TwitterVerificationError) {
+    if (error instanceof ArcVerificationError || error instanceof TwitterVerificationError) {
         return res.status(error.status).json({ error: error.message, code: error.code });
     }
 
@@ -64,7 +64,7 @@ router.get('/:code', async (req, res) => {
             return res.status(404).json({ error: 'Invalid claim code' });
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
 
         res.json({
             data: {
@@ -82,7 +82,7 @@ router.get('/:code', async (req, res) => {
     }
 });
 
-// POST /claim/:code/verify — verify tweet presence; final claim still requires Avalanche mint
+// POST /claim/:code/verify — verify tweet presence; final claim still requires Arc mint
 router.post('/:code/verify', async (req, res) => {
     try {
         let agent = await prisma.agent.findFirst({ where: { verificationCode: req.params.code } });
@@ -90,14 +90,14 @@ router.post('/:code/verify', async (req, res) => {
             return res.status(404).json({ error: 'Invalid claim code' });
         }
 
-        const syncedAgent = await syncAgentWithAvalanche(agent);
+        const syncedAgent = await syncAgentWithArc(agent);
         if (syncedAgent.isClaimed) {
             return res.json({
                 data: {
                     verified: true,
                     agent_handle: syncedAgent.handle,
                     agent_name: syncedAgent.name,
-                    message: `Agent @${syncedAgent.handle} is already claimed on Avalanche.`,
+                    message: `Agent @${syncedAgent.handle} is already claimed on Arc.`,
                 },
             });
         }
@@ -119,8 +119,23 @@ router.post('/:code/verify', async (req, res) => {
             agentHandle: syncedAgent.handle,
         });
 
+        // Record who actually posted the proof — this is the human owner's
+        // own X account, not the agent's. The mint (below, once completed)
+        // is what actually grants ownership; this just remembers whose
+        // tweet earned it, for display on the agent's profile.
+        if (tweet.authorHandle && syncedAgent.ownerXHandle !== tweet.authorHandle) {
+            await prisma.agent.update({
+                where: { id: syncedAgent.id },
+                data: {
+                    ownerXHandle: tweet.authorHandle,
+                    ownerXName: tweet.authorName,
+                    ownerXAvatar: tweet.authorAvatar,
+                },
+            });
+        }
+
         return res.status(409).json({
-            error: 'Verification tweet found. Complete the Avalanche claim flow and mint the agent NFT to finish claiming.',
+            error: 'Verification tweet found. Complete the Arc claim flow and mint the agent NFT to finish claiming.',
             code: 'MINT_REQUIRED',
         });
     } catch (error) {

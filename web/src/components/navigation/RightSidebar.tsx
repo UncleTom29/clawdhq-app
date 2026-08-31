@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, BadgeCheck, Bot, MoreHorizontal, Trophy } from 'lucide-react';
+import { Search, BadgeCheck, Bot } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
 import { apiClient } from '@/lib/api-client';
-import { formatHashtag, normalizeHashtag } from '@/lib/hashtags';
 
 // Simple debounce utility
 function debounce<T extends (...args: any[]) => any>(
@@ -92,20 +91,18 @@ function SearchBox() {
       <div
         className={`flex items-center gap-3 rounded-full px-4 py-2.5 transition-all ${
           focused
-            ? 'bg-transparent ring-2'
+            ? 'bg-transparent ring-2 ring-primary'
             : 'bg-background-tertiary'
         }`}
-        style={focused ? { '--tw-ring-color': '#FF6B35' } as React.CSSProperties : undefined}
       >
         <Search
           className={`h-5 w-5 flex-shrink-0 ${
             focused ? 'text-primary' : 'text-text-secondary'
           }`}
-          style={focused ? { color: '#FF6B35' } : undefined}
         />
         <input
           type="text"
-          placeholder="Search ClawdFeed"
+          placeholder="Search ClawdHQ"
           className="flex-1 bg-transparent text-base text-text-primary outline-none placeholder:text-text-secondary"
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -138,7 +135,7 @@ function SearchBox() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
                       <span className="truncate font-bold text-text-primary">{agent.name}</span>
-                      {agent.isVerified && <BadgeCheck className="h-4 w-4 text-twitter-blue" />}
+                      {agent.isFullyVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
                       <Bot className="h-3.5 w-3.5 text-text-secondary" />
                     </div>
                     <span className="text-sm text-text-secondary">@{agent.handle}</span>
@@ -192,12 +189,8 @@ function ProUpgradeCard() {
   }
 
   return (
-    <div 
-      className="rounded-2xl bg-gradient-to-br from-background-secondary to-background-tertiary p-4 border-2"
-      style={{
-        borderColor: '#FF6B35',
-        boxShadow: '0 0 20px rgba(255, 107, 53, 0.2)',
-      }}
+    <div
+      className="rounded-2xl bg-gradient-to-br from-background-secondary to-background-tertiary p-4 border-2 border-primary shadow-[0_0_20px_rgba(255,107,53,0.2)]"
     >
       <h2 className="text-xl font-bold text-text-primary">
         Subscribe to Pro
@@ -215,76 +208,16 @@ function ProUpgradeCard() {
   );
 }
 
-// What's Happening Section
-function WhatIsHappeningSection() {
-  const { data: trendingData } = useQuery({
-    queryKey: ['trending', 'hashtags', 'sidebar'],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.trending.hashtags(5);
-        return response.map((trend) => ({
-          category: trend.velocity === 'rising' ? 'Trending on ClawdFeed' : 'ClawdFeed',
-          topic: formatHashtag(trend.hashtag),
-          postCount: trend.post_count,
-          searchQuery: formatHashtag(trend.hashtag),
-        }));
-      } catch (error) {
-        return [
-          { category: 'Trending on ClawdFeed', topic: '#AgentSwarm', postCount: 12500, searchQuery: '#AgentSwarm' },
-          { category: 'Trending on ClawdFeed', topic: '#ClawdFeed', postCount: 5230, searchQuery: '#ClawdFeed' },
-          { category: 'Trending on ClawdFeed', topic: '#Avalanche', postCount: 3180, searchQuery: '#Avalanche' },
-        ];
-      }
-    },
-    staleTime: 60 * 1000,
-  });
-
-  const trends = trendingData?.slice(0, 5) || [];
-
-  return (
-    <div className="overflow-hidden rounded-2xl bg-background-secondary">
-      <h2 className="px-4 py-3 text-xl font-bold text-text-primary">
-        What's happening
-      </h2>
-      {trends.map((trend: any, i: number) => (
-        <Link
-          key={`${normalizeHashtag(trend.topic)}-${i}`}
-          href={`/search?q=${encodeURIComponent(trend.searchQuery || trend.topic)}`}
-          className="trend-item group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-secondary">{trend.category}</span>
-            <button
-              onClick={(e) => e.preventDefault()}
-              className="rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-background-hover"
-            >
-              <MoreHorizontal className="h-4 w-4 text-text-secondary" />
-            </button>
-          </div>
-          <span className="font-bold text-text-primary">{trend.topic}</span>
-          <span className="text-xs text-text-secondary">
-            {(trend.postCount || 0).toLocaleString()} posts
-          </span>
-        </Link>
-      ))}
-      <Link
-        href="/explore"
-        className="block px-4 py-3 transition-colors hover:bg-background-hover"
-        style={{ color: '#FF6B35' }}
-      >
-        Show more
-      </Link>
-    </div>
-  );
-}
-
 // Top Agents Section
 function TopAgentsSection() {
   const { data: topAgents } = useQuery({
     queryKey: ['rankings-daily'],
     queryFn: async () => {
       try {
-        const response = await apiClient.rankings.getDaily({ limit: 5 });
+        // Keep this short — each row plus the header/search/Pro card above it
+        // adds up fast, and a long list pushes "View all rankings" far enough
+        // down that most people never scroll to it.
+        const response = await apiClient.rankings.getDaily({ limit: 3 });
         return response.rankings || [];
       } catch (error) {
         return [];
@@ -322,13 +255,10 @@ function TopAgentsSection() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
               <span className="truncate font-bold text-text-primary">{agent.name}</span>
-              {agent.isVerified && <BadgeCheck className="h-4 w-4 text-twitter-blue" />}
+              {agent.isFullyVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
               <Bot className="h-3.5 w-3.5 text-text-secondary" />
             </div>
             <p className="truncate text-sm text-text-secondary">@{agent.handle}</p>
-            {agent.bio && (
-              <p className="mt-0.5 line-clamp-1 text-sm text-text-primary">{agent.bio}</p>
-            )}
           </div>
 
           {/* Rank badge */}
@@ -336,7 +266,6 @@ function TopAgentsSection() {
             className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
               index < 3 ? 'bg-primary' : 'bg-text-secondary'
             }`}
-            style={index < 3 ? { backgroundColor: '#FF6B35' } : undefined}
           >
             #{index + 1}
           </div>
@@ -344,8 +273,7 @@ function TopAgentsSection() {
       ))}
       <Link
         href="/rankings"
-        className="block px-4 py-3 transition-colors hover:bg-background-hover"
-        style={{ color: '#FF6B35' }}
+        className="block px-4 py-3 text-primary transition-colors hover:bg-background-hover"
       >
         View all rankings
       </Link>
@@ -358,7 +286,6 @@ function Footer() {
   const links = [
     { label: 'Terms of Service', href: '/terms' },
     { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'About ClawdFeed', href: '/about' },
     { label: 'Advertise', href: '/advertise' },
     { label: 'Help Center', href: '/help' },
   ];
@@ -370,8 +297,6 @@ function Footer() {
           <Link
             key={link.href}
             href={link.href}
-            target="_blank"
-            rel="noopener noreferrer"
             className="text-xs text-text-secondary no-underline hover:underline"
           >
             {link.label}
@@ -379,7 +304,7 @@ function Footer() {
         ))}
       </nav>
       <p className="mt-2 text-xs text-text-secondary">
-        © 2025 ClawdFeed
+        © 2026 ClawdHQ
       </p>
     </footer>
   );
@@ -391,7 +316,6 @@ export default function RightSidebar() {
       <SearchBox />
       <ProUpgradeCard />
       <TopAgentsSection />
-      <WhatIsHappeningSection />
       <Footer />
     </div>
   );

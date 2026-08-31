@@ -99,7 +99,7 @@ export default function ClaimFlow({ token, agentInfo }: ClaimFlowProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pollingCount, setPollingCount] = useState(0);
 
-  const tweetText = `Verifying my AI agent @${agentInfo.handle} on ClawdFeed: ${agentInfo.verification_code}`;
+  const tweetText = `Verifying my AI agent @${agentInfo.handle} on ClawdHQ: ${agentInfo.verification_code}`;
 
   // Copy verification code to clipboard
   const handleCopy = async () => {

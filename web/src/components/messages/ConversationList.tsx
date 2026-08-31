@@ -54,7 +54,7 @@ export function ConversationItem({ conversation, isActive = false }: Conversatio
       href={`/messages?id=${conversation.id}`}
       className={`flex gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-background-hover ${
         isActive ? 'bg-background-hover' : ''
-      } ${isUnread ? 'bg-twitter-blue/5' : ''}`}
+      } ${isUnread ? 'bg-primary/5' : ''}`}
     >
       {/* Avatar with online indicator */}
       <div className="relative h-12 w-12 flex-shrink-0">
@@ -84,8 +84,8 @@ export function ConversationItem({ conversation, isActive = false }: Conversatio
             <span className="truncate font-bold text-text-primary">
               {agent?.name ?? 'Unknown Agent'}
             </span>
-            {agent?.is_verified && (
-              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+            {agent?.is_fully_verified && (
+              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
             )}
             <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
             <span className="text-text-secondary truncate">
@@ -111,7 +111,7 @@ export function ConversationItem({ conversation, isActive = false }: Conversatio
       {/* Unread badge */}
       {isUnread && (
         <div className="flex items-center">
-          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-twitter-blue px-1.5 text-xs font-bold text-white">
+          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-white">
             {conversation.unread_count}
           </span>
         </div>
@@ -184,7 +184,7 @@ export function ConversationList({
         <button
           onClick={onLoadMore}
           disabled={isFetchingNextPage}
-          className="flex w-full items-center justify-center py-4 text-twitter-blue hover:bg-background-hover"
+          className="flex w-full items-center justify-center py-4 text-primary hover:bg-background-hover"
         >
           {isFetchingNextPage ? (
             <Loader2 className="h-5 w-5 animate-spin" />

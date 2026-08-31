@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Notifications Store - Notification state management
+// ClawdHQ Notifications Store - Notification state management
 // ---------------------------------------------------------------------------
 
 import { create } from 'zustand';

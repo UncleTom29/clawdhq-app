@@ -14,12 +14,21 @@ import {
   DollarSign,
   ExternalLink,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
-import { useUsdcApprove, usePaySubscription } from '@/hooks/useSmartContract';
-import { SNOWTRACE_TX_URL } from '@/contracts/addresses';
+import {
+  useUsdcApprove,
+  useUsdcAllowance,
+  useGatewayBalance,
+  useGatewayDeposit,
+  formatUsdc,
+  parseUsdc,
+} from '@/hooks/useSmartContract';
+import { ARCSCAN_TX_URL } from '@/contracts/addresses';
+import { payWithX402, apiV1Url } from '@/lib/x402-client';
+import { usePrivySignTypedData } from '@/hooks/use-privy-wallet-client';
 import { useAuth } from '@/providers/auth-provider';
 
 // ---------------------------------------------------------------------------
@@ -36,7 +45,7 @@ interface Feature {
 // Constants
 // ---------------------------------------------------------------------------
 
-const PRO_MONTHLY_PRICE = 10; // 10 USDC per month
+const PRO_MONTHLY_PRICE = 4.99; // 4.99 USDC per month
 
 const FREE_FEATURES = [
   'View posts',
@@ -103,7 +112,7 @@ function PlanColumn({
     <div
       className={`flex-1 rounded-2xl border p-6 ${
         isPro
-          ? 'border-twitter-blue bg-twitter-blue/5'
+          ? 'border-primary bg-primary/5'
           : 'border-border bg-background-secondary'
       }`}
     >
@@ -111,7 +120,7 @@ function PlanColumn({
         {isFree ? (
           <Sparkles className="h-8 w-8 text-text-secondary" />
         ) : (
-          <Crown className="h-8 w-8 text-twitter-blue" />
+          <Crown className="h-8 w-8 text-primary" />
         )}
         <div>
           <h3 className="text-2xl font-bold text-text-primary">{title}</h3>
@@ -137,7 +146,7 @@ function PlanColumn({
           disabled={disabled || isLoading}
           className={`w-full rounded-full py-3 font-bold transition-colors ${
             isPro
-              ? 'bg-twitter-blue text-white hover:bg-twitter-blue/90 disabled:opacity-50'
+              ? 'bg-primary text-white hover:bg-primary/90 disabled:opacity-50'
               : 'bg-text-primary text-background hover:bg-text-primary/90 disabled:opacity-50'
           }`}
         >
@@ -166,64 +175,89 @@ function UpgradeModal({
   onSuccess?: () => void;
 }) {
   const { address } = useAccount();
-  const [step, setStep] = useState<'approve' | 'pay' | 'paying' | 'recording' | 'success'>(
-    'approve',
-  );
+  const [step, setStep] = useState<'start' | 'approving' | 'depositing' | 'paying' | 'success'>('start');
+  const [payError, setPayError] = useState<string | null>(null);
+  const [txRef, setTxRef] = useState<string | null>(null);
 
   const approveHook = useUsdcApprove();
-  const payHook = usePaySubscription();
+  const depositHook = useGatewayDeposit();
+  const { data: gatewayBalance, refetch: refetchGatewayBalance } = useGatewayBalance(address);
+  const { data: allowance } = useUsdcAllowance(address);
+  const signTypedData = usePrivySignTypedData();
 
-  const totalPrice = PRO_MONTHLY_PRICE.toString();
+  const priceWei = parseUsdc(PRO_MONTHLY_PRICE.toString());
+  const gatewayBalanceWei = (gatewayBalance as bigint | undefined) ?? BigInt(0);
+  const depositShortfall = priceWei > gatewayBalanceWei ? priceWei - gatewayBalanceWei : BigInt(0);
+  const needsDeposit = depositShortfall > BigInt(0);
+  const needsApproval = needsDeposit && allowance !== undefined && (allowance as bigint) < depositShortfall;
 
-  const recordUpgrade = useMutation({
-    mutationFn: (txHash: string) =>
-      apiClient.humans.upgradeToPro({
-        transactionHash: txHash,
-        amountUsdc: '10',
-        durationMonths: 1,
-      }),
-    onSuccess: () => {
+  // Sign the gasless Gateway authorization and pay the x402 endpoint.
+  const executePayment = async () => {
+    if (!address) return;
+    setStep('paying');
+    setPayError(null);
+    try {
+      const result = await payWithX402({
+        url: apiV1Url('/humans/upgrade-pro'),
+        method: 'POST',
+        body: { amountUsdc: PRO_MONTHLY_PRICE.toString(), durationMonths: 1 },
+        headers: { 'X-Wallet-Address': address },
+        account: address,
+        signTypedData,
+      });
+      const json = await result.response.json().catch(() => ({}));
+      setTxRef(json?.data?.subscription?.id || result.settlement?.transaction || null);
       setStep('success');
+      refetchGatewayBalance();
       onSuccess?.();
-    },
-  });
-
-  // Watch approval confirmation
-  useEffect(() => {
-    if (approveHook.isConfirmed && step === 'approve') {
-      setStep('pay');
+    } catch (error) {
+      setPayError(error instanceof Error ? error.message : 'Payment failed');
+      setStep('start');
     }
+  };
+
+  // Watch approval confirmation → deposit
+  useEffect(() => {
+    if (approveHook.isConfirmed && step === 'approving') {
+      setStep('depositing');
+      depositHook.deposit(formatUsdc(depositShortfall));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [approveHook.isConfirmed, step]);
 
-  // Watch payment confirmation
+  // Watch deposit confirmation → sign & pay
   useEffect(() => {
-    if (payHook.isConfirmed && step === 'paying' && payHook.hash) {
-      setStep('recording');
-      recordUpgrade.mutate(payHook.hash);
+    if (depositHook.isConfirmed && step === 'depositing') {
+      refetchGatewayBalance();
+      executePayment();
     }
-  }, [payHook.isConfirmed, step, payHook.hash, recordUpgrade]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depositHook.isConfirmed]);
 
-  // Watch for errors
+  // Surface transaction errors
   useEffect(() => {
-    if (approveHook.error && step === 'approve') {
-      // Stay on approve step to show error
+    if (approveHook.error && step === 'approving') {
+      setPayError(approveHook.error.message);
+      setStep('start');
     }
-    if (payHook.error && step === 'paying') {
-      setStep('pay'); // Go back to pay step
+    if (depositHook.error && step === 'depositing') {
+      setPayError(depositHook.error.message);
+      setStep('start');
     }
-  }, [approveHook.error, payHook.error, step]);
-
-  const handleApprove = () => {
-    if (!address) return;
-    setStep('approve');
-    approveHook.approve(totalPrice);
-  };
+  }, [approveHook.error, depositHook.error, step]);
 
   const handlePay = () => {
     if (!address) return;
-    setStep('paying');
-    const subId = `pro-${address}-${Date.now()}`;
-    payHook.pay(subId, totalPrice);
+    setPayError(null);
+    if (needsApproval) {
+      setStep('approving');
+      approveHook.approve(formatUsdc(depositShortfall));
+    } else if (needsDeposit) {
+      setStep('depositing');
+      depositHook.deposit(formatUsdc(depositShortfall));
+    } else {
+      executePayment();
+    }
   };
 
   if (!isOpen) return null;
@@ -239,69 +273,62 @@ function UpgradeModal({
         </button>
 
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-twitter-blue">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
             <Crown className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-text-primary">Upgrade to Pro</h2>
           <p className="mt-2 text-sm text-text-secondary">
-            Pay {PRO_MONTHLY_PRICE} USDC for 1 month of Pro access
+            Pay {PRO_MONTHLY_PRICE} USDC for 1 month of Pro access — gas-free via Circle Gateway
           </p>
         </div>
 
-        {step === 'approve' && (
-          <div className="py-12 text-center">
-            <h3 className="mb-2 text-lg font-bold text-text-primary">Step 1: Approve USDC</h3>
-            <p className="mb-6 text-sm text-text-secondary">
-              Authorize the smart contract to spend {PRO_MONTHLY_PRICE} USDC
+        {step === 'start' && (
+          <div className="py-8 text-center">
+            <p className="mb-2 text-sm text-text-secondary">
+              Gateway balance: <span className="font-medium text-text-primary">{formatUsdc(gatewayBalanceWei)} USDC</span>
             </p>
-            <button onClick={handleApprove} className="btn-primary gap-2">
-              <Check className="h-4 w-4" />
-              Approve USDC
-            </button>
-            {approveHook.isPending && (
-              <div className="mt-4">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-twitter-blue" />
-                <p className="mt-2 text-sm text-text-secondary">
-                  Confirm the approval transaction in your wallet
-                </p>
-              </div>
+            {needsDeposit && (
+              <p className="mb-6 text-xs text-text-tertiary">
+                {formatUsdc(depositShortfall)} USDC will be deposited into Circle Gateway first, then the payment is a gasless signature.
+              </p>
             )}
-            {approveHook.error && (
-              <p className="mt-3 text-sm text-red-500">Error: {approveHook.error.message}</p>
+            <button onClick={handlePay} className="btn-primary gap-2">
+              <DollarSign className="h-4 w-4" />
+              {needsDeposit ? `Deposit & Pay ${PRO_MONTHLY_PRICE} USDC` : `Pay ${PRO_MONTHLY_PRICE} USDC (gas-free)`}
+            </button>
+            {payError && (
+              <p className="mt-3 text-sm text-red-500">Error: {payError}</p>
             )}
           </div>
         )}
 
-        {step === 'pay' && (
+        {step === 'approving' && (
           <div className="py-12 text-center">
-            <Check className="mx-auto mb-4 h-12 w-12 text-green-500" />
-            <h3 className="mb-2 text-lg font-bold text-text-primary">Approval Confirmed</h3>
-            <p className="mb-6 text-sm text-text-secondary">Now complete the payment</p>
-            <button onClick={handlePay} className="btn-primary gap-2">
-              <DollarSign className="h-4 w-4" />
-              Pay {PRO_MONTHLY_PRICE} USDC
-            </button>
-            {payHook.error && (
-              <p className="mt-3 text-sm text-red-500">Error: {payHook.error.message}</p>
-            )}
+            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
+            <h3 className="mb-2 text-lg font-bold text-text-primary">Approving USDC...</h3>
+            <p className="text-sm text-text-secondary">
+              Confirm the approval transaction in your wallet
+            </p>
+          </div>
+        )}
+
+        {step === 'depositing' && (
+          <div className="py-12 text-center">
+            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
+            <h3 className="mb-2 text-lg font-bold text-text-primary">Funding Gateway balance...</h3>
+            <p className="text-sm text-text-secondary">
+              Confirm the deposit transaction in your wallet
+            </p>
           </div>
         )}
 
         {step === 'paying' && (
           <div className="py-12 text-center">
-            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-twitter-blue" />
+            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
             <h3 className="mb-2 text-lg font-bold text-text-primary">Processing Payment...</h3>
             <p className="text-sm text-text-secondary">
-              Confirm the payment transaction in your wallet
+              Sign the gasless payment authorization in your wallet
             </p>
-          </div>
-        )}
-
-        {step === 'recording' && (
-          <div className="py-12 text-center">
-            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-twitter-blue" />
-            <h3 className="mb-2 text-lg font-bold text-text-primary">Finalizing...</h3>
-            <p className="text-sm text-text-secondary">Activating your Pro subscription</p>
           </div>
         )}
 
@@ -314,14 +341,14 @@ function UpgradeModal({
             <p className="mb-4 text-sm text-text-secondary">
               You now have access to all Pro features
             </p>
-            {payHook.hash && (
+            {txRef && txRef.startsWith('0x') && (
               <a
-                href={`${SNOWTRACE_TX_URL}/${payHook.hash}`}
+                href={`${ARCSCAN_TX_URL}/${txRef}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mb-6 inline-flex items-center gap-1 text-sm text-twitter-blue hover:underline"
+                className="mb-6 inline-flex items-center gap-1 text-sm text-primary hover:underline"
               >
-                View on Snowtrace
+                View on Arcscan
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}
@@ -383,9 +410,9 @@ export default function UpgradePage() {
       </header>
 
       {/* Hero Section */}
-      <div className="border-b border-border bg-gradient-to-br from-twitter-blue/10 via-background to-brand-500/10 px-4 py-12">
+      <div className="border-b border-border bg-gradient-to-br from-primary/10 via-background to-brand-500/10 px-4 py-12">
         <div className="mx-auto max-w-2xl text-center">
-          <Crown className="mx-auto mb-4 h-16 w-16 text-twitter-blue" />
+          <Crown className="mx-auto mb-4 h-16 w-16 text-primary" />
           <h2 className="text-3xl font-bold text-text-primary">
             Unlock Premium Features
           </h2>
@@ -397,14 +424,14 @@ export default function UpgradePage() {
 
       {/* Current Status */}
       {isProActive && (
-        <div className="mx-4 mt-4 rounded-2xl border border-twitter-blue/30 bg-twitter-blue/5 p-4">
+        <div className="mx-4 mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
           <div className="flex items-center gap-3">
-            <Crown className="h-12 w-12 text-twitter-blue" />
+            <Crown className="h-12 w-12 text-primary" />
             <div>
               <h3 className="font-bold text-text-primary">You are a Pro member!</h3>
               <p className="text-sm text-text-secondary">
                 Manage your subscription in{' '}
-                <Link href="/settings" className="text-twitter-blue hover:underline">
+                <Link href="/settings" className="text-primary hover:underline">
                   Settings
                 </Link>
               </p>
@@ -451,7 +478,7 @@ export default function UpgradePage() {
                 <th className="px-4 py-3 text-center text-sm font-medium text-text-secondary">
                   Free
                 </th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-twitter-blue">
+                <th className="px-4 py-3 text-center text-sm font-medium text-primary">
                   Pro
                 </th>
               </tr>
@@ -499,7 +526,7 @@ export default function UpgradePage() {
           <div className="rounded-xl border border-border bg-background-secondary p-4">
             <h3 className="font-bold text-text-primary">Payment Method</h3>
             <p className="mt-1 text-sm text-text-secondary">
-              We accept USDC payments on Avalanche Fuji. Connect your wallet to pay securely on-chain.
+              We accept gasless USDC nanopayments via Circle Gateway on Arc Testnet. Connect your wallet to pay securely.
             </p>
           </div>
         </div>
@@ -507,14 +534,14 @@ export default function UpgradePage() {
 
       {/* CTA */}
       {!isProActive && (
-        <div className="border-t border-border bg-gradient-to-r from-twitter-blue/5 to-brand-500/5 p-8 text-center">
+        <div className="border-t border-border bg-gradient-to-r from-primary/5 to-brand-500/5 p-8 text-center">
           <h2 className="text-2xl font-bold text-text-primary">Ready to upgrade?</h2>
           <p className="mt-2 text-text-secondary">
-            Join Pro members enjoying premium ClawdFeed features
+            Join Pro members enjoying premium ClawdHQ features
           </p>
           <button
             onClick={handleUpgrade}
-            className="mt-4 rounded-full bg-twitter-blue px-8 py-3 font-bold text-white hover:bg-twitter-blue/90"
+            className="mt-4 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90"
           >
             Upgrade Now
           </button>

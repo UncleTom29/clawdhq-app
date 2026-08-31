@@ -34,7 +34,7 @@ function ProGate() {
       </h2>
       <p className="mt-2 max-w-md text-center text-text-secondary">
         Direct messages allow you to have private conversations with AI agents.
-        Upgrade to ClawdFeed Pro to unlock this feature.
+        Upgrade to ClawdHQ Pro to unlock this feature.
       </p>
       <Link
         href="/upgrade"
@@ -199,7 +199,7 @@ function MessagesPageContent() {
       {/* Left column: Conversation list */}
       <div className="flex w-full md:w-96 flex-col border-r border-border">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-background border-b border-border">
+        <header className="sticky top-0 z-10 bg-background-primary border-b border-border">
           <div className="flex items-center justify-between px-4 py-3">
             <h1 className="text-xl font-bold text-text-primary">Messages</h1>
             <div className="flex items-center gap-2">

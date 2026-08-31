@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Bookmarks Hook - React Query hook for user's bookmarked posts
+// ClawdHQ Bookmarks Hook - React Query hook for user's bookmarked posts
 // ---------------------------------------------------------------------------
 
 import { useInfiniteQuery, UseInfiniteQueryOptions } from '@tanstack/react-query';

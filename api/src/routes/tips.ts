@@ -1,77 +1,74 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../prisma';
-import { AvalancheVerificationError, verifyTipPaymentTx } from '../services/avalanche';
+import {
+    getSettledPayment,
+    microUsdcToUsd,
+    recordSettledTip,
+    requirePayment,
+} from '../services/nanopayments';
 
 const router = Router();
 
-async function handleVerifyAvalancheTip(req: Request, res: Response) {
-    try {
-        const agentId = req.body?.agent_id;
-        const txHash = req.body?.transaction_hash || req.body?.tx_signature;
-        const amountUsd = Number(req.body?.amount_usd || 0);
+// POST /tips/pay — x402-gated tip. First call (no payment header) returns
+// 402 with Circle Gateway payment requirements for amount_usd; the buyer signs
+// an EIP-3009 authorization offchain and retries. On settlement the tip is
+// recorded and the agent's 80% share is paid out to its Circle wallet.
+router.post(
+    '/pay',
+    requirePayment((req) => Number(req.body?.amount_usd || req.query?.amount_usd || 0)),
+    async (req: Request, res: Response) => {
+        try {
+            const agentRef = req.body?.agent_id || req.body?.agent_handle || req.query?.agent;
+            if (!agentRef) {
+                return res.status(400).json({ error: 'agent_id or agent_handle is required' });
+            }
 
-        if (!agentId || !txHash || !amountUsd) {
-            return res.status(400).json({ error: 'agent_id, transaction_hash, and amount_usd are required' });
-        }
-
-        const agent = await prisma.agent.findUnique({ where: { id: agentId } });
-        if (!agent) {
-            return res.status(404).json({ error: 'Agent not found' });
-        }
-
-        const verifiedTip = await verifyTipPaymentTx({
-            txHash: String(txHash),
-            expectedAgentId: agent.id,
-            expectedAmountUsd: amountUsd,
-            expectedWallet: req.body?.tipper_wallet || null,
-        });
-
-        const existingTip = await prisma.tip.findUnique({
-            where: { txSignature: verifiedTip.txHash },
-        });
-
-        const tip = existingTip || await prisma.tip.create({
-            data: {
-                agentId: agent.id,
-                tipperWallet: verifiedTip.tipper,
-                amountUsd,
-                txSignature: verifiedTip.txHash,
-            },
-        });
-
-        if (!existingTip) {
-            await prisma.agent.update({
-                where: { id: agent.id },
-                data: { totalEarnings: { increment: verifiedTip.agentShareCents } },
+            const agent = await prisma.agent.findFirst({
+                where: { OR: [{ id: String(agentRef) }, { handle: String(agentRef) }] },
             });
-        }
+            if (!agent) {
+                return res.status(404).json({ error: 'Agent not found' });
+            }
 
-        return res.json({
-            data: {
-                tip_id: tip.id,
-                tx_signature: verifiedTip.txHash,
-                amount_usd: Number(verifiedTip.amountUsdc),
-                recipient: verifiedTip.payoutWallet || agent.ownerAddress,
-                chain: 'avalanche-fuji',
-                token: 'USDC',
-                split: verifiedTip.agentShare > 0n ? '80% to agent owner, 20% to platform' : '100% to platform',
-            },
-        });
-    } catch (error) {
-        if (error instanceof AvalancheVerificationError) {
-            return res.status(error.status).json({ error: error.message, code: error.code });
-        }
+            const payment = getSettledPayment(req);
+            if (!payment) {
+                return res.status(402).json({ error: 'Payment was not settled' });
+            }
 
-        const message = error instanceof Error ? error.message : 'Internal server error';
-        return res.status(500).json({ error: message });
-    }
+            const { tip, agentShareMicro, payoutTxId } = await recordSettledTip(agent, payment);
+
+            return res.json({
+                data: {
+                    tip_id: tip.id,
+                    tx_signature: tip.txSignature,
+                    amount_usd: microUsdcToUsd(payment.amount),
+                    recipient: agent.circleWalletAddress || agent.ownerAddress,
+                    chain: 'arc-testnet',
+                    network: payment.network,
+                    token: 'USDC',
+                    split: agentShareMicro > 0n ? '80% to agent wallet, 20% to platform' : '100% to platform',
+                    payout_tx_id: payoutTxId,
+                },
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Internal server error';
+            return res.status(500).json({ error: message });
+        }
+    },
+);
+
+// Legacy tx-hash verification endpoints (Avalanche/Solana eras). Tips are now
+// x402 nanopayments — point old clients at the new flow.
+function legacyGone(_req: Request, res: Response) {
+    res.status(410).json({
+        error: 'Tx-hash tip verification has been retired. Tip via x402: POST /tips/pay with amount_usd and agent_handle — the 402 response carries Circle Gateway payment requirements.',
+        code: 'USE_X402_NANOPAYMENTS',
+    });
 }
 
-// POST /tips/verify-avalanche
-router.post('/verify-avalanche', handleVerifyAvalancheTip);
-
-// Legacy alias retained for older clients, now verified on Avalanche Fuji.
-router.post('/verify-solana', handleVerifyAvalancheTip);
+router.post('/verify-arc', legacyGone);
+router.post('/verify-avalanche', legacyGone);
+router.post('/verify-solana', legacyGone);
 
 // GET /tips/history/:wallet
 router.get('/history/:wallet', async (req, res) => {

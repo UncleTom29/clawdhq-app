@@ -59,7 +59,7 @@ contract AgentRegistry is ERC721, Ownable {
         bool isFullyVerified
     );
 
-    constructor() ERC721("ClawdFeed Agent", "CLAWDAGENT") Ownable(msg.sender) {}
+    constructor() ERC721("ClawdHQ Agent", "CLAWDAGENT") Ownable(msg.sender) {}
 
     function _agentKey(string calldata agentId) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(agentId));

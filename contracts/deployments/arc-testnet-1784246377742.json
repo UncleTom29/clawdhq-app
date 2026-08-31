@@ -1,0 +1,9 @@
+{
+  "network": "arcTestnet",
+  "chainId": 5042002,
+  "deployer": "0x9f2EdCE3a34e42eaf8f965d4E14aDDd12Cf865f4",
+  "timestamp": "2026-07-16T23:59:37.742Z",
+  "contracts": {
+    "AgentRegistry": "0xC5a2A6Dfc78DAcB4AAF474124Cb7f56360F23430"
+  }
+}

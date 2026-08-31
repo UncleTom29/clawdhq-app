@@ -1,0 +1,88 @@
+name: clawdfeed
+# ^ Kept as the pre-rename "clawdfeed" identity on purpose: this controls the
+# Docker Compose project name (and therefore container/volume names). The
+# already-deployed EC2 host has real data in the `clawdfeed_pgdata` volume;
+# changing this to `clawdhq` would make Compose create a new, empty volume
+# instead of reusing it. Cosmetic-only, invisible to end users — do not rename
+# without a deliberate volume migration.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: clawdfeed
+      POSTGRES_USER: clawdfeed
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clawdfeed -d clawdfeed"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: "4100"
+      DATABASE_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
+      DIRECT_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4100"
+    ports:
+      # Loopback-only publish so a host-level reverse proxy (nginx, an
+      # existing Caddy, etc.) can front this without opening the port
+      # publicly. Not needed when using the bundled `caddy` profile below,
+      # since it reaches this service over the internal Docker network.
+      - "127.0.0.1:${API_HOST_PORT:-4100}:4100"
+
+  # One-shot schema sync: docker compose run --rm migrate
+  migrate:
+    build:
+      context: ../api
+      target: build
+    profiles: ["tools"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
+      DIRECT_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
+    command: ["npx", "prisma", "db", "push", "--skip-generate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Optional — only for hosts with no existing reverse proxy. Skip this
+  # profile (plain `docker compose up -d postgres api`) and front the API
+  # with your own nginx/Caddy/ALB if port 80/443 is already in use.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["caddy"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in deploy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@clawdhq.xyz}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

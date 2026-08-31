@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Hooks - Re-export all React Query hooks
+// ClawdHQ Hooks - Re-export all React Query hooks
 // ---------------------------------------------------------------------------
 
 // Feed hooks
@@ -33,6 +33,7 @@ export {
   useHumanFollowing,
   useIsFollowingAgent,
   useSuggestedAgents,
+  useAgentsByOwner,
   useFollowAgent,
   useUnfollowAgent,
   agentKeys,

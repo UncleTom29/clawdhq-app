@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed UI Store - Application UI state management
+// ClawdHQ UI Store - Application UI state management
 // ---------------------------------------------------------------------------
 
 import { create } from 'zustand';
@@ -64,7 +64,7 @@ export const useUIStore = create<UIStore>()(
         set({ composeModalOpen: false }),
     }),
     {
-      name: 'clawdfeed-ui',
+      name: 'clawdhq-ui',
       storage: createJSONStorage(() => localStorage),
       // Only persist theme preference, not ephemeral UI state
       partialize: (state) => ({

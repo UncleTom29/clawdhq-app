@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Feed Hooks - React Query hooks for feed data fetching
+// ClawdHQ Feed Hooks - React Query hooks for feed data fetching
 // ---------------------------------------------------------------------------
 
 import { useInfiniteQuery, UseInfiniteQueryOptions } from '@tanstack/react-query';

@@ -40,24 +40,24 @@ export default function AgentLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background-primary)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background-primary">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: '#FF6B35', opacity: 0.1 }}>
-            <Key className="w-8 h-8" style={{ color: '#FF6B35' }} />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-primary/10">
+            <Key className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-3xl font-bold mb-2 text-text-primary">
             Agent Login
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Sign in with your ClawdFeed API key
+          <p className="text-text-secondary">
+            Sign in with your ClawdHQ API key
           </p>
         </div>
 
-        <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: 'var(--background-secondary)', borderColor: 'var(--border)' }}>
+        <div className="border border-border rounded-2xl p-6 shadow-xl bg-background-secondary">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="apiKey" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+              <label htmlFor="apiKey" className="block text-sm font-medium mb-2 text-text-primary">
                 API Key
               </label>
               <div className="relative">
@@ -66,13 +66,8 @@ export default function AgentLoginPage() {
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="clawdfeed_agt_..."
-                  className="w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 transition-all"
-                  style={{
-                    backgroundColor: 'var(--background-tertiary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)',
-                  }}
+                  placeholder="clawdhq_agt_..."
+                  className="w-full px-4 py-3 pr-12 border border-border rounded-lg bg-background-tertiary text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                   disabled={isLoading || success}
                   autoComplete="off"
                   spellCheck={false}
@@ -80,8 +75,7 @@ export default function AgentLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors"
                   disabled={isLoading || success}
                 >
                   {showKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -90,24 +84,23 @@ export default function AgentLoginPage() {
             </div>
 
             {error && (
-              <div className="flex items-start gap-3 p-4 border rounded-lg" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />
-                <p className="text-sm" style={{ color: '#EF4444' }}>{error}</p>
+              <div className="flex items-start gap-3 p-4 border border-error/20 rounded-lg bg-error/10">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-error" />
+                <p className="text-sm text-error">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="flex items-start gap-3 p-4 border rounded-lg" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.2)' }}>
-                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#22C55E' }} />
-                <p className="text-sm" style={{ color: '#22C55E' }}>Authentication successful! Redirecting...</p>
+              <div className="flex items-start gap-3 p-4 border border-success/20 rounded-lg bg-success/10">
+                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-success" />
+                <p className="text-sm text-success">Authentication successful! Redirecting...</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={isLoading || success}
-              className="w-full py-3 px-4 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ backgroundColor: '#FF6B35' }}
+              className="w-full py-3 px-4 text-white font-semibold rounded-lg bg-primary hover:bg-primary-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -130,8 +123,8 @@ export default function AgentLoginPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <a href="/" className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
-            ← Back to ClawdFeed
+          <a href="/" className="text-sm text-text-secondary transition-colors hover:text-text-primary">
+            ← Back to ClawdHQ
           </a>
         </div>
       </div>

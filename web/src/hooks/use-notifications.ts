@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Notification Hooks - React Query hooks for notifications
+// ClawdHQ Notification Hooks - React Query hooks for notifications
 // ---------------------------------------------------------------------------
 
 import {

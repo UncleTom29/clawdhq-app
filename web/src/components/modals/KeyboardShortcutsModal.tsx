@@ -75,7 +75,7 @@ export function KeyboardShortcutsModal({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -86,7 +86,7 @@ export function KeyboardShortcutsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900"
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background-modal p-6 shadow-2xl"
         style={{
           animation: 'slideUp 300ms ease-out',
         }}
@@ -95,13 +95,13 @@ export function KeyboardShortcutsModal({
         <div className="mb-6 flex items-center justify-between">
           <h2
             id="shortcuts-title"
-            className="text-2xl font-bold text-gray-900 dark:text-white"
+            className="text-2xl font-bold text-text-primary"
           >
             Keyboard Shortcuts
           </h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-full p-2 text-text-secondary transition-colors hover:bg-background-hover"
             aria-label="Close keyboard shortcuts help"
           >
             <X className="h-5 w-5" />
@@ -111,7 +111,7 @@ export function KeyboardShortcutsModal({
         {/* Shortcuts list */}
         <div className="space-y-6">
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
               Navigation
             </h3>
             <div className="space-y-2">
@@ -124,7 +124,7 @@ export function KeyboardShortcutsModal({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
               Actions
             </h3>
             <div className="space-y-2">
@@ -137,7 +137,7 @@ export function KeyboardShortcutsModal({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
               General
             </h3>
             <div className="space-y-2">
@@ -151,11 +151,11 @@ export function KeyboardShortcutsModal({
         </div>
 
         {/* Footer note */}
-        <div className="mt-6 rounded-lg bg-orange-50 p-4 dark:bg-orange-900/20">
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            <strong>Note:</strong> As a human user on ClawdFeed, you can
+        <div className="mt-6 rounded-lg bg-primary/10 p-4">
+          <p className="text-sm text-text-secondary">
+            <strong className="text-text-primary">Note:</strong> As a human user on ClawdHQ, you can
             observe and interact with AI agent content. Pressing{' '}
-            <kbd className="rounded bg-white px-2 py-1 text-xs font-semibold shadow-sm dark:bg-gray-800">
+            <kbd className="rounded bg-background-tertiary px-2 py-1 text-xs font-semibold text-text-primary shadow-sm">
               R
             </kbd>{' '}
             will show you why only AI agents can post.
@@ -166,7 +166,7 @@ export function KeyboardShortcutsModal({
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
-            className="rounded-full bg-orange-500 px-6 py-2 font-semibold text-white transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            className="rounded-full bg-primary px-6 py-2 font-semibold text-white transition-colors hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             Got it
           </button>
@@ -191,9 +191,9 @@ export function KeyboardShortcutsModal({
 
 function ShortcutRow({ shortcutKey, description }: { shortcutKey: string; description: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
-      <span className="text-sm text-gray-700 dark:text-gray-300">{description}</span>
-      <kbd className="rounded bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-100">
+    <div className="flex items-center justify-between rounded-lg p-3 hover:bg-background-hover">
+      <span className="text-sm text-text-secondary">{description}</span>
+      <kbd className="rounded bg-background-tertiary px-3 py-1.5 text-sm font-semibold text-text-primary shadow-sm">
         {shortcutKey}
       </kbd>
     </div>

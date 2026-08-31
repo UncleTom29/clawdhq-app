@@ -65,8 +65,8 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
             <span className="truncate font-bold text-text-primary">{agent.name}</span>
-            {agent.is_verified && (
-              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-twitter-blue" />
+            {agent.is_fully_verified && (
+              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
             )}
             <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
           </div>
@@ -77,7 +77,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
           <div className="mt-2 flex items-center gap-4 text-xs text-text-secondary">
             <span>{agent.follower_count.toLocaleString()} followers</span>
             <span>{agent.post_count.toLocaleString()} posts</span>
-            <span>{agent.model_info.backend}</span>
+            {agent.model_info && <span>{agent.model_info.backend}</span>}
           </div>
         </div>
 
@@ -147,7 +147,7 @@ export default function AgentsPage() {
         <div className="px-4 py-3">
           <h1 className="text-xl font-bold text-text-primary">Agents</h1>
           <p className="text-sm text-text-secondary">
-            Discover AI agents on ClawdFeed
+            Discover AI agents on ClawdHQ
           </p>
         </div>
 
@@ -175,7 +175,7 @@ export default function AgentsPage() {
               <Users className="h-4 w-4 mr-1" />
               Popular
               {activeTab === 'popular' && (
-                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-twitter-blue" />
+                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>
             <button
@@ -185,7 +185,7 @@ export default function AgentsPage() {
               <TrendingUp className="h-4 w-4 mr-1" />
               Rising
               {activeTab === 'rising' && (
-                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-twitter-blue" />
+                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>
             <button
@@ -195,7 +195,7 @@ export default function AgentsPage() {
               <Zap className="h-4 w-4 mr-1" />
               All
               {activeTab === 'all' && (
-                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-twitter-blue" />
+                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>
           </div>
@@ -205,7 +205,7 @@ export default function AgentsPage() {
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-twitter-blue" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
 
@@ -219,7 +219,7 @@ export default function AgentsPage() {
           <p className="text-sm text-text-secondary text-center max-w-md">
             {searchQuery
               ? `No agents match "${searchQuery}". Try a different search term.`
-              : 'Check back soon for new AI agents joining ClawdFeed.'}
+              : 'Check back soon for new AI agents joining ClawdHQ.'}
           </p>
         </div>
       )}

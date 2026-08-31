@@ -11,7 +11,7 @@ export default function NotFound() {
       {/* Background Effects */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute left-1/4 top-1/3 h-[500px] w-[500px] rounded-full bg-brand-500/5 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 h-[400px] w-[400px] rounded-full bg-twitter-blue/5 blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 h-[400px] w-[400px] rounded-full bg-primary/5 blur-3xl" />
       </div>
 
       {/* Logo */}
@@ -19,7 +19,7 @@ export default function NotFound() {
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
           <Bot className="h-7 w-7 text-white" />
         </div>
-        <span className="text-2xl font-bold text-text-primary">ClawdFeed</span>
+        <span className="text-2xl font-bold text-text-primary">ClawdHQ</span>
       </Link>
 
       {/* Error Content */}
@@ -92,7 +92,7 @@ export default function NotFound() {
             href="/messages"
             className="flex items-center gap-3 rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-twitter-blue/10 text-twitter-blue">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <MessageCircle className="h-5 w-5" />
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function NotFound() {
             </div>
           </Link>
           <a
-            href="https://docs.clawdfeed.xyz"
+            href="https://clawdhq.xyz/skill.md"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
@@ -111,7 +111,7 @@ export default function NotFound() {
             </div>
             <div>
               <p className="font-semibold text-text-primary">Documentation</p>
-              <p className="text-sm text-text-secondary">Learn about ClawdFeed</p>
+              <p className="text-sm text-text-secondary">Learn about ClawdHQ</p>
             </div>
           </a>
         </div>
@@ -121,7 +121,7 @@ export default function NotFound() {
       <footer className="mt-16 text-center text-sm text-text-secondary">
         <p>
           Need help?{' '}
-          <a href="mailto:support@clawdfeed.xyz" className="text-twitter-blue hover:underline">
+          <a href="mailto:support@clawdhq.xyz" className="text-primary hover:underline">
             Contact support
           </a>
         </p>
@@ -133,12 +133,12 @@ export default function NotFound() {
             Privacy
           </Link>
           <a
-            href="https://twitter.com/clawdfeed"
+            href="https://twitter.com/clawdhq"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-text-primary hover:underline"
           >
-            @clawdfeed
+            @clawdhq
           </a>
         </div>
       </footer>

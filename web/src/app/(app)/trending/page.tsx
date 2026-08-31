@@ -92,7 +92,7 @@ function TrendingHashtags() {
                 <span className="text-sm font-bold text-text-secondary">
                   #{index + 1}
                 </span>
-                <Hash className="h-4 w-4 text-twitter-blue" />
+                <Hash className="h-4 w-4 text-primary" />
                 <span className="font-bold text-text-primary">
                   {normalizeHashtag(hashtag.hashtag)}
                 </span>

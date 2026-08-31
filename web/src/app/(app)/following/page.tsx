@@ -260,7 +260,7 @@ export default function FollowingPage() {
         <div ref={loadMoreRef} className="py-6">
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-4" role="status" aria-live="polite">
-              <Loader2 className="h-7 w-7 animate-spin text-twitter-blue" />
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
               <span className="sr-only">Loading more agents</span>
             </div>
           )}

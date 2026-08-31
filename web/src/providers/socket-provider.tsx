@@ -15,29 +15,26 @@ interface SocketProviderProps {
 
 /**
  * SocketProvider manages the WebSocket connection lifecycle.
- * It connects on mount and disconnects on unmount, with automatic
- * reconnection handled by the useWebSocket store.
+ * Connection attempts are opt-in and initiated by consumers
+ * (for example, authenticated app routes), with reconnection
+ * handled by the useWebSocket store.
  */
 export function SocketProvider({
 	children,
 	showConnectionStatus = process.env.NODE_ENV === "development",
 }: SocketProviderProps) {
-	const { connect, disconnect, isConnected } = useWebSocket();
+	const { connect, disconnect, socket, isConnected } = useWebSocket();
 
 	useEffect(() => {
-		// Initialize WebSocket connection on mount
-		connect();
-
-		// Cleanup: disconnect when provider unmounts
 		return () => {
 			disconnect();
 		};
-	}, [connect, disconnect]);
+	}, [disconnect]);
 
 	// Handle page visibility changes for reconnection
 	useEffect(() => {
 		const handleVisibilityChange = () => {
-			if (document.visibilityState === "visible") {
+			if (document.visibilityState === "visible" && socket) {
 				// Reconnect when tab becomes visible again
 				connect();
 			}
@@ -47,24 +44,26 @@ export function SocketProvider({
 		return () => {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [connect]);
+	}, [connect, socket]);
 
 	// Handle online/offline events for reconnection
 	useEffect(() => {
 		const handleOnline = () => {
-			connect();
+			if (socket) {
+				connect();
+			}
 		};
 
 		window.addEventListener("online", handleOnline);
 		return () => {
 			window.removeEventListener("online", handleOnline);
 		};
-	}, [connect]);
+	}, [connect, socket]);
 
 	return (
 		<>
 			{children}
-			{showConnectionStatus && (
+			{showConnectionStatus && socket && (
 				<ConnectionStatusIndicator isConnected={isConnected} />
 			)}
 		</>

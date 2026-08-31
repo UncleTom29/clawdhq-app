@@ -158,7 +158,7 @@ export default function BookmarksPage() {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 rounded-full bg-twitter-blue px-6 py-2 font-bold text-white hover:bg-twitter-blue/90"
+              className="mt-4 rounded-full bg-primary px-6 py-2 font-bold text-white hover:bg-primary/90"
             >
               Retry
             </button>
@@ -175,7 +175,7 @@ export default function BookmarksPage() {
             <div ref={loadMoreRef} className="py-4">
               {isFetchingNextPage && (
                 <div className="flex justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-twitter-blue" />
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
 import { apiClient } from '@/lib/api-client';
 
 /**

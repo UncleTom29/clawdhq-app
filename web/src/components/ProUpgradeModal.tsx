@@ -1,12 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { X, Check, Zap, MessageCircle, Sparkles, Loader2, DollarSign, ExternalLink } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useQuery } from '@tanstack/react-query';
+import { X, Check, Zap, MessageCircle, Sparkles, Loader2, ExternalLink } from 'lucide-react';
+import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
 import { apiClient } from '@/lib/api-client';
-import { useUsdcApprove, usePaySubscription } from '@/hooks/useSmartContract';
-import { SNOWTRACE_TX_URL } from '@/contracts/addresses';
+import {
+  useUsdcApprove,
+  useUsdcAllowance,
+  useGatewayBalance,
+  useGatewayDeposit,
+  formatUsdc,
+  parseUsdc,
+} from '@/hooks/useSmartContract';
+import { ARCSCAN_TX_URL } from '@/contracts/addresses';
+import { payWithX402, apiV1Url } from '@/lib/x402-client';
+import { usePrivySignTypedData } from '@/hooks/use-privy-wallet-client';
 
 interface ProUpgradeModalProps {
   isOpen: boolean;
@@ -14,16 +23,21 @@ interface ProUpgradeModalProps {
   onSuccess?: () => void;
 }
 
-const PRO_MONTHLY_PRICE = '10'; // 10 USDC per month
+const PRO_MONTHLY_PRICE = '4.99'; // 4.99 USDC per month
 
 export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgradeModalProps) {
   const { address } = useAccount();
   const [selectedDuration, setSelectedDuration] = useState(1);
-  const [step, setStep] = useState<'select' | 'approve' | 'pay' | 'paying' | 'recording' | 'success'>('select');
+  const [step, setStep] = useState<'select' | 'approving' | 'depositing' | 'paying' | 'success'>('select');
+  const [payError, setPayError] = useState<string | null>(null);
+  const [txRef, setTxRef] = useState<string | null>(null);
 
-  // Smart contract hooks
+  // Gasless nanopayment plumbing (Circle Gateway)
   const approveHook = useUsdcApprove();
-  const payHook = usePaySubscription();
+  const depositHook = useGatewayDeposit();
+  const { data: gatewayBalance, refetch: refetchGatewayBalance } = useGatewayBalance(address);
+  const { data: allowance } = useUsdcAllowance(address);
+  const signTypedData = usePrivySignTypedData();
 
   // Get tier status
   const { data: tierStatus } = useQuery({
@@ -33,73 +47,91 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
   });
 
   const totalPrice = (parseFloat(PRO_MONTHLY_PRICE) * selectedDuration).toFixed(2);
-
-  // Record upgrade on backend
-  const recordUpgrade = useMutation({
-    mutationFn: (data: {
-      transactionHash: string;
-      amountUsdc: string;
-      durationMonths: number;
-    }) => apiClient.humans.upgradeToPro(data),
-    onSuccess: () => {
-      setStep('success');
-      onSuccess?.();
-    },
-  });
+  const priceWei = parseUsdc(totalPrice);
+  const gatewayBalanceWei = (gatewayBalance as bigint | undefined) ?? BigInt(0);
+  const depositShortfall = priceWei > gatewayBalanceWei ? priceWei - gatewayBalanceWei : BigInt(0);
+  const needsDeposit = depositShortfall > BigInt(0);
+  const needsApproval = needsDeposit && allowance !== undefined && (allowance as bigint) < depositShortfall;
 
   // Reset on open
   useEffect(() => {
     if (isOpen) {
       setStep('select');
       setSelectedDuration(1);
+      setPayError(null);
+      setTxRef(null);
       approveHook.reset();
-      payHook.reset();
-      recordUpgrade.reset();
+      depositHook.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Watch approval confirmation -> move to pay step
-  useEffect(() => {
-    if (approveHook.isConfirmed && step === 'approve') {
-      setStep('pay');
-    }
-  }, [approveHook.isConfirmed, step]);
-
-  // Watch payment confirmation -> record on backend
-  useEffect(() => {
-    if (payHook.isConfirmed && step === 'paying' && payHook.hash) {
-      setStep('recording');
-      recordUpgrade.mutate({
-        transactionHash: payHook.hash,
-        amountUsdc: totalPrice,
-        durationMonths: selectedDuration,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payHook.isConfirmed]);
-
-  // Watch for errors
-  useEffect(() => {
-    if (approveHook.error && step === 'approve') {
-      setStep('select');
-    }
-    if (payHook.error && step === 'paying') {
-      setStep('pay'); // Go back to pay step so user can retry
-    }
-  }, [approveHook.error, payHook.error, step]);
-
-  const handleApprove = () => {
-    if (!address) return;
-    setStep('approve');
-    approveHook.approve(totalPrice);
-  };
-
-  const handlePay = () => {
+  // Sign the gasless Gateway authorization and pay the x402 endpoint.
+  const executePayment = async () => {
     if (!address) return;
     setStep('paying');
-    const subId = `pro-${address}-${Date.now()}`;
-    payHook.pay(subId, totalPrice);
+    try {
+      const result = await payWithX402({
+        url: apiV1Url('/humans/upgrade-pro'),
+        method: 'POST',
+        body: { amountUsdc: totalPrice, durationMonths: selectedDuration },
+        headers: { 'X-Wallet-Address': address },
+        account: address,
+        signTypedData,
+      });
+      const json = await result.response.json().catch(() => ({}));
+      setTxRef(json?.data?.subscription?.id || result.settlement?.transaction || null);
+      setStep('success');
+      refetchGatewayBalance();
+      onSuccess?.();
+    } catch (error) {
+      setPayError(error instanceof Error ? error.message : 'Payment failed');
+      setStep('select');
+    }
+  };
+
+  // Watch approval confirmation -> deposit
+  useEffect(() => {
+    if (approveHook.isConfirmed && step === 'approving') {
+      setStep('depositing');
+      depositHook.deposit(formatUsdc(depositShortfall));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approveHook.isConfirmed, step]);
+
+  // Watch deposit confirmation -> sign & pay
+  useEffect(() => {
+    if (depositHook.isConfirmed && step === 'depositing') {
+      refetchGatewayBalance();
+      executePayment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depositHook.isConfirmed]);
+
+  // Surface transaction errors
+  useEffect(() => {
+    if (approveHook.error && step === 'approving') {
+      setPayError(approveHook.error.message);
+      setStep('select');
+    }
+    if (depositHook.error && step === 'depositing') {
+      setPayError(depositHook.error.message);
+      setStep('select');
+    }
+  }, [approveHook.error, depositHook.error, step]);
+
+  const handleUpgrade = () => {
+    if (!address) return;
+    setPayError(null);
+    if (needsApproval) {
+      setStep('approving');
+      approveHook.approve(formatUsdc(depositShortfall));
+    } else if (needsDeposit) {
+      setStep('depositing');
+      depositHook.deposit(formatUsdc(depositShortfall));
+    } else {
+      executePayment();
+    }
   };
 
   if (!isOpen) return null;
@@ -206,14 +238,18 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
               </div>
               <p className="mt-2 text-xs text-text-tertiary">
                 ${PRO_MONTHLY_PRICE}/month x {selectedDuration} month
-                {selectedDuration > 1 ? 's' : ''}
+                {selectedDuration > 1 ? 's' : ''} — paid as a gasless Circle Gateway nanopayment
+              </p>
+              <p className="mt-1 text-xs text-text-tertiary">
+                Gateway balance: {formatUsdc(gatewayBalanceWei)} USDC
+                {needsDeposit ? ` (will deposit ${formatUsdc(depositShortfall)} USDC first)` : ''}
               </p>
             </div>
 
             {/* Action button */}
-            <button onClick={handleApprove} className="btn-primary w-full gap-2">
+            <button onClick={handleUpgrade} className="btn-primary w-full gap-2">
               <Zap className="h-4 w-4" />
-              Upgrade to Pro
+              {needsDeposit ? 'Deposit & Upgrade to Pro' : 'Upgrade to Pro (gas-free)'}
             </button>
 
             {tierStatus?.isProActive && (
@@ -222,15 +258,15 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
               </p>
             )}
 
-            {approveHook.error && (
+            {payError && (
               <p className="mt-3 text-center text-sm text-red-500">
-                Approval failed: {approveHook.error.message}
+                Payment failed: {payError}
               </p>
             )}
           </>
         )}
 
-        {step === 'approve' && (
+        {step === 'approving' && (
           <div className="py-12 text-center">
             <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-500 mb-4" />
             <h3 className="text-lg font-bold text-text-primary mb-2">Approving USDC...</h3>
@@ -240,20 +276,13 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
           </div>
         )}
 
-        {step === 'pay' && (
+        {step === 'depositing' && (
           <div className="py-12 text-center">
-            <Check className="mx-auto h-12 w-12 text-green-500 mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Approval Confirmed</h3>
-            <p className="text-sm text-text-secondary mb-6">Now complete the payment</p>
-            <button onClick={handlePay} className="btn-primary gap-2">
-              <DollarSign className="h-4 w-4" />
-              Pay ${totalPrice} USDC
-            </button>
-            {payHook.error && (
-              <p className="mt-3 text-sm text-red-500">
-                Payment failed: {payHook.error.message}
-              </p>
-            )}
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-500 mb-4" />
+            <h3 className="text-lg font-bold text-text-primary mb-2">Funding Gateway balance...</h3>
+            <p className="text-sm text-text-secondary">
+              Depositing USDC into Circle Gateway. Confirm the transaction in your wallet.
+            </p>
           </div>
         )}
 
@@ -262,16 +291,8 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
             <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-500 mb-4" />
             <h3 className="text-lg font-bold text-text-primary mb-2">Processing Payment...</h3>
             <p className="text-sm text-text-secondary">
-              Please confirm the payment transaction in your wallet
+              Sign the gasless payment authorization in your wallet
             </p>
-          </div>
-        )}
-
-        {step === 'recording' && (
-          <div className="py-12 text-center">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-500 mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Finalizing...</h3>
-            <p className="text-sm text-text-secondary">Recording your Pro subscription</p>
           </div>
         )}
 
@@ -284,14 +305,14 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
             <p className="text-sm text-text-secondary mb-4">
               You can now message agents and enjoy all Pro features.
             </p>
-            {payHook.hash && (
+            {txRef && txRef.startsWith('0x') && (
               <a
-                href={`${SNOWTRACE_TX_URL}/${payHook.hash}`}
+                href={`${ARCSCAN_TX_URL}/${txRef}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-twitter-blue hover:underline"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
               >
-                View on Snowtrace
+                View on Arcscan
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}

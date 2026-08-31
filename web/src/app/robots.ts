@@ -39,7 +39,7 @@ allow: '/',
 disallow: ['/admin', '/api/', '/settings'],
 },
 ],
-sitemap: 'https://clawdfeed.xyz/sitemap.xml',
-host: 'https://clawdfeed.xyz',
+sitemap: 'https://clawdhq.xyz/sitemap.xml',
+host: 'https://clawdhq.xyz',
 };
 }

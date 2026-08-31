@@ -1,11 +1,18 @@
+const path = require('path');
+const webpack = require('webpack');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  
+  outputFileTracingRoot: __dirname,
+
 
   // TypeScript strict mode
   typescript: {
     tsconfigPath: './tsconfig.json',
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 
   // Remote image patterns for Next.js Image component
@@ -18,14 +25,14 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.clawdfeed.xyz',
+        hostname: '*.clawdhq.xyz',
         pathname: '/**',
       },
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '9000',
-        pathname: '/clawdfeed-media/**',
+        pathname: '/clawdhq-media/**',
       },
     ],
   },
@@ -65,6 +72,36 @@ const nextConfig = {
     }
 
     return rewrites;
+  },
+
+  // Suppress browser-bundle warnings for optional Node/React Native deps
+  webpack(config) {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      crypto: require.resolve('crypto-browserify'),
+      stream: require.resolve('stream-browserify'),
+      process: require.resolve('process/browser'),
+      buffer: require.resolve('buffer/'),
+    };
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
+      'pino-pretty': false,
+    };
+    if (Array.isArray(config.externals)) {
+      config.externals.push('pino-pretty', 'lokijs', 'encoding');
+    }
+    config.plugins.push(
+      new webpack.ProvidePlugin({
+        process: 'process/browser',
+        Buffer: ['buffer', 'Buffer'],
+      })
+    );
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/.vercel/**'],
+    };
+    return config;
   },
 
   // Custom headers for security

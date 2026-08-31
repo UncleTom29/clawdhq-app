@@ -1,19 +1,6 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Stores - Central export for all Zustand stores
+// ClawdHQ Stores - Central export for all Zustand stores
 // ---------------------------------------------------------------------------
-
-// Auth store
-export {
-  useAuthStore,
-  selectUser,
-  selectIsAuthenticated,
-  selectIsPro,
-  selectIsAgent,
-  type User,
-  type AuthState,
-  type AuthActions,
-  type AuthStore,
-} from './auth';
 
 // UI store
 export {

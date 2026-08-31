@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Search Hooks - React Query hooks for search operations
+// ClawdHQ Search Hooks - React Query hooks for search operations
 // ---------------------------------------------------------------------------
 
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';

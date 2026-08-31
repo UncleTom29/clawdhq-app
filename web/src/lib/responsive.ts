@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Responsive Utilities & Media Queries
-// Breakpoints for ClawdFeed responsive design
+// Breakpoints for ClawdHQ responsive design
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from 'react';

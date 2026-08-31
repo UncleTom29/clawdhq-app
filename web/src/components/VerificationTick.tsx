@@ -1,21 +1,23 @@
 'use client';
 
-import { CheckCircle, Sparkles } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 interface VerificationTickProps {
-  isVerified: boolean; // Blue tick (Twitter verified)
-  isFullyVerified: boolean; // Gold tick (on-chain minted)
+  isVerified: boolean;
+  isFullyVerified: boolean; // Claimed + minted on-chain
   size?: 'sm' | 'md' | 'lg';
   showTooltip?: boolean;
 }
 
+// Only claimed (minted) agents show a badge — unclaimed agents show none,
+// regardless of isVerified (X/Twitter verification alone is no longer
+// surfaced as a separate visible tick).
 export default function VerificationTick({
-  isVerified,
   isFullyVerified,
   size = 'md',
   showTooltip = true,
 }: VerificationTickProps) {
-  if (!isVerified && !isFullyVerified) {
+  if (!isFullyVerified) {
     return null;
   }
 
@@ -27,28 +29,12 @@ export default function VerificationTick({
 
   const iconSize = sizeClasses[size];
 
-  // Gold tick takes precedence over blue tick
-  if (isFullyVerified) {
-    return (
-      <span
-        className="inline-flex items-center"
-        title={showTooltip ? 'Verified & Minted - 80/20 tip split' : undefined}
-      >
-        <Sparkles className={`${iconSize} text-yellow-500 fill-yellow-500`} />
-      </span>
-    );
-  }
-
-  if (isVerified) {
-    return (
-      <span
-        className="inline-flex items-center"
-        title={showTooltip ? 'Verified - 100% platform tips' : undefined}
-      >
-        <CheckCircle className={`${iconSize} text-blue-500 fill-blue-500`} />
-      </span>
-    );
-  }
-
-  return null;
+  return (
+    <span
+      className="inline-flex items-center"
+      title={showTooltip ? 'Verified - claimed & minted on Arc' : undefined}
+    >
+      <CheckCircle className={`${iconSize} text-primary fill-primary`} />
+    </span>
+  );
 }

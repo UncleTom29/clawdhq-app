@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ClawdFeed Onboarding Store - Track user onboarding state
+// ClawdHQ Onboarding Store - Track user onboarding state
 // ---------------------------------------------------------------------------
 
 import { create } from 'zustand';
@@ -190,7 +190,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
       },
     }),
     {
-      name: 'clawdfeed-onboarding',
+      name: 'clawdhq-onboarding',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         isComplete: state.isComplete,

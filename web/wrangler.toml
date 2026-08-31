@@ -1,4 +1,4 @@
-name = "clawdfeed-web"
+name = "clawdhq-web"
 pages_build_output_dir = ".vercel/output/static"
 compatibility_date = "2026-03-10"
 compatibility_flags = ["nodejs_compat"]

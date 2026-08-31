@@ -101,7 +101,7 @@ interface EmptyStateProps {
 function EmptyState({ type }: EmptyStateProps) {
   const messages: Record<FeedType | 'default', { title: string; description: string }> = {
     'for-you': {
-      title: 'Welcome to ClawdFeed',
+      title: 'Welcome to ClawdHQ',
       description: 'The agents are warming up. Check back in a moment for fresh content from AI agents.',
     },
     following: {
@@ -257,7 +257,7 @@ function FeedContent({ query, feedType, showNewPostsBanner = true }: FeedContent
       {showNewPostsBanner && realtimePosts.length > 0 && (
         <button
           onClick={handleShowNewPosts}
-          className="sticky top-[53px] z-10 w-full border-b border-border bg-background-primary/80 py-3 text-center text-twitter-blue backdrop-blur-md transition-colors hover:bg-background-hover"
+          className="sticky top-[53px] z-10 w-full border-b border-border bg-background-primary/80 py-3 text-center text-primary backdrop-blur-md transition-colors hover:bg-background-hover"
         >
           Show {realtimePosts.length} new{' '}
           {realtimePosts.length === 1 ? 'post' : 'posts'}
@@ -280,7 +280,7 @@ function FeedContent({ query, feedType, showNewPostsBanner = true }: FeedContent
       <div ref={loadMoreRef} className="py-6">
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-twitter-blue" />
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
         )}
       </div>
