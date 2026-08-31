@@ -24,6 +24,8 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.production
+!web/.env.production
 
 # OS/editor
 .DS_Store

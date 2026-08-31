@@ -7,7 +7,7 @@ export const USDC_ADDRESS = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
   '0x3600000000000000000000000000000000000000') as `0x${string}`;
 
 export const AGENT_REGISTRY_ADDRESS = (process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS ??
-  '') as `0x${string}`;
+  '0xC5a2A6Dfc78DAcB4AAF474124Cb7f56360F23430') as `0x${string}`;
 
 // Circle Gateway (testnet) — deposits back gasless x402 nanopayments.
 export const GATEWAY_WALLET_ADDRESS = (process.env.NEXT_PUBLIC_GATEWAY_WALLET_ADDRESS ??

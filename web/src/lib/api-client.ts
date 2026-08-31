@@ -4,7 +4,7 @@
 
 import { useHumanAuthStore } from '@/stores/human-auth';
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.clawdhq.xyz/api/v1';
 
 /** Reads the current persisted human accessToken directly from the vanilla
  * Zustand store (safe outside React, always reflects post-rehydration state)

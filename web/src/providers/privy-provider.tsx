@@ -14,7 +14,7 @@ import { useHumanAuthStore } from '@/stores/human-auth';
 import type { HumanUser } from '@/stores/human-auth';
 import { arcTestnet } from '@/lib/chain';
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || '';
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cms55ue5c00ea0cl5z1qf5yob';
 
 function mapToHumanUser(userObj: {
   id: string;
