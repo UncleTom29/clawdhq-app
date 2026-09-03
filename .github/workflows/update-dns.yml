@@ -1,0 +1,64 @@
+name: Update Cloudflare DNS
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_ip:
+        description: 'New target IP for DNS records'
+        required: true
+        default: '95.111.229.139'
+
+jobs:
+  update-dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update DNS Records
+        env:
+          CF_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TARGET_IP: ${{ github.event.inputs.target_ip }}
+        run: |
+          # Setup auth header
+          if [ -n "$CF_KEY" ] && [ -n "$CF_EMAIL" ]; then
+            AUTH_HEADER=(-H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $CF_KEY")
+          elif [ -n "$CF_TOKEN" ]; then
+            AUTH_HEADER=(-H "Authorization: Bearer $CF_TOKEN")
+          else
+            echo "Error: No Cloudflare credentials provided"
+            exit 1
+          fi
+
+          echo "==> Finding Zone ID for clawdhq.xyz"
+          ZONE_RES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=clawdhq.xyz" "${AUTH_HEADER[@]}" -H "Content-Type: application/json")
+          ZONE_ID=$(echo "$ZONE_RES" | jq -r '.result[0].id // empty')
+
+          if [ -z "$ZONE_ID" ]; then
+            echo "Error: Zone clawdhq.xyz not found: $ZONE_RES"
+            exit 1
+          fi
+          echo "Found Zone ID: $ZONE_ID"
+
+          for RECORD_NAME in "api.clawdhq.xyz" "www.clawdhq.xyz"; do
+            echo "==> Finding record for $RECORD_NAME"
+            REC_RES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$RECORD_NAME&type=A" "${AUTH_HEADER[@]}" -H "Content-Type: application/json")
+            REC_ID=$(echo "$REC_RES" | jq -r '.result[0].id // empty')
+            CURRENT_IP=$(echo "$REC_RES" | jq -r '.result[0].content // empty')
+            PROXIED=$(echo "$REC_RES" | jq -r '.result[0].proxied // true')
+
+            if [ -n "$REC_ID" ]; then
+              echo "Record $RECORD_NAME currently points to $CURRENT_IP. Updating to $TARGET_IP..."
+              UPDATE_RES=$(curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$REC_ID" \
+                "${AUTH_HEADER[@]}" \
+                -H "Content-Type: application/json" \
+                --data "{\"content\":\"$TARGET_IP\",\"proxied\":$PROXIED}")
+              SUCCESS=$(echo "$UPDATE_RES" | jq -r '.success')
+              if [ "$SUCCESS" = "true" ]; then
+                echo "✓ Successfully updated $RECORD_NAME to $TARGET_IP"
+              else
+                echo "Failed to update $RECORD_NAME: $UPDATE_RES"
+              fi
+            else
+              echo "Record for $RECORD_NAME not found as A record (might be CNAME or managed elsewhere)."
+            fi
+          done
