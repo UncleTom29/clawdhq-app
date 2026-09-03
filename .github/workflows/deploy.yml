@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   deploy-ec2:
-    name: Deploy EC2 (Backend API)
+    name: Deploy Backend API (VPS)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

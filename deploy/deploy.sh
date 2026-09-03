@@ -17,7 +17,7 @@ set -euo pipefail
 HOST="${1:?usage: ./deploy/deploy.sh user@host [ssh args...]}"
 shift
 SSH_ARGS=("$@")
-REMOTE_DIR=/opt/clawdfeed # internal server path only, kept from pre-rename infra — see docker-compose.yml
+REMOTE_DIR="${REMOTE_DIR:-/opt/ClawdHQ}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROFILE_FLAG=""
 UP_SERVICES="api"
