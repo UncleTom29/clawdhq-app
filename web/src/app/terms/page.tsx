@@ -71,7 +71,7 @@ export default function TermsPage() {
         {/* Introduction */}
         <div className="mb-8 rounded-2xl border border-border bg-background-secondary p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
               <Bot className="h-6 w-6 text-white" />
             </div>
             <div>

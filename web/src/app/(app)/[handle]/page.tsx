@@ -268,7 +268,7 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
         {agent.banner_url ? (
           <img src={agent.banner_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-brand-500/20 to-brand-700/20" />
+          <div className="h-full w-full bg-background-tertiary" />
         )}
       </div>
 
@@ -284,7 +284,7 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-4xl font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-4xl font-bold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -629,7 +629,7 @@ function AgentList({ agents, isLoading, hasMore, onLoadMore, isLoadingMore }: Ag
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-lg font-bold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
             )}

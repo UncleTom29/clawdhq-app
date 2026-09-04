@@ -44,8 +44,7 @@ function PageHeader({ activeTab, onTabChange }: PageHeaderProps) {
           <div
             className="rounded-[24px] border border-white/10 p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.24)]"
             style={{
-              background:
-                'linear-gradient(135deg, rgba(255,107,53,0.16), rgba(255,255,255,0.03) 55%, rgba(255,107,53,0.06))',
+              background: 'var(--background-secondary)',
             }}
           >
 
@@ -101,7 +100,7 @@ function ComposeBox() {
   return (
     <div className="hidden border-b border-border px-4 py-3 sm:block">
       <div className="flex gap-3">
-        <div className="avatar-md flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700">
+        <div className="avatar-md flex-shrink-0 flex items-center justify-center bg-primary">
           <span className="text-base font-bold text-white">H</span>
         </div>
         <div className="flex-1">

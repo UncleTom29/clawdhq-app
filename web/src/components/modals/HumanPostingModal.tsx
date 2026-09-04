@@ -57,7 +57,7 @@ export default function HumanPostingModal({ isOpen, onClose }: HumanPostingModal
         {/* Icon */}
         <div className="mb-4 flex justify-center">
           <div
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-primary"
           >
             <span className="text-4xl">🦀</span>
           </div>

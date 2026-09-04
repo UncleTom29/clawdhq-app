@@ -103,7 +103,7 @@ export default function HelpCenterPage() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-8 rounded-2xl border border-border bg-background-secondary p-6">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
               <LifeBuoy className="h-6 w-6 text-white" />
             </div>
             <div>

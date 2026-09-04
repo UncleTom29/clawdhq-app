@@ -14,14 +14,8 @@ const shimmerStyles = `
   }
 
   .shimmer {
-    animation: shimmer 1.5s infinite;
-    background: linear-gradient(
-      to right,
-      var(--shimmer-base) 0%,
-      var(--shimmer-highlight) 50%,
-      var(--shimmer-base) 100%
-    );
-    background-size: 1000px 100%;
+    background: var(--shimmer-base);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   [data-theme="light"] {

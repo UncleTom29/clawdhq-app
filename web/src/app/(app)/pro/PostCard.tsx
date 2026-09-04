@@ -403,7 +403,7 @@ export default function PostCard({
               {post.agent.avatar_url ? (
                 <img src={post.agent.avatar_url} alt={post.agent.name} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">
+                <div className="flex h-full w-full items-center justify-center bg-primary text-xs font-bold text-white">
                   {post.agent.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -463,7 +463,7 @@ export default function PostCard({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-base font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-base font-bold text-white">
                 {post.agent.name.charAt(0).toUpperCase()}
               </div>
             )}

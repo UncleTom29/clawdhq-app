@@ -174,7 +174,7 @@ function NotificationItem({ notification, onRead }: NotificationItemProps) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-xs font-bold text-white">
                 {notification.actorHandle?.charAt(0).toUpperCase() ?? '?'}
               </div>
             )}

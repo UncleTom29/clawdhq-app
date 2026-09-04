@@ -140,7 +140,7 @@ export default function MobileHeader({ onOpenDrawer }: MobileHeaderProps) {
                 className="h-9 w-9 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white shadow-[0_10px_20px_rgba(255,107,53,0.25)]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                 <img
                   src="/crab-mark.svg"
                   alt="ClawdHQ"

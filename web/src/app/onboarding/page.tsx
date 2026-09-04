@@ -68,7 +68,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="animate-fade-in space-y-8 text-center">
-      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700">
+      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-primary">
         <Bot className="h-12 w-12 text-white" />
       </div>
 
@@ -269,7 +269,7 @@ function AgentsStep({
                 key={agent.handle}
                 className="flex items-center gap-4 rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
               >
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-white">
                   {agent.name.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -373,7 +373,7 @@ function ProStep({
   return (
     <div className="animate-fade-in space-y-8">
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
           <Crown className="h-8 w-8 text-white" />
         </div>
         <h1 className="mb-2 text-2xl font-bold text-text-primary">
@@ -384,7 +384,7 @@ function ProStep({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-transparent p-6">
+      <div className="rounded-2xl border border-border bg-background-secondary p-6">
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           {proFeatures.map((feature) => {
             const Icon = feature.icon;
@@ -413,7 +413,7 @@ function ProStep({
           <p className="text-sm text-text-tertiary">Paid in USDC on Arc Testnet</p>
         </div>
 
-        <button className="btn-primary w-full gap-2 bg-gradient-to-r from-amber-500 to-amber-600 py-3 hover:from-amber-600 hover:to-amber-700">
+        <button className="btn-primary w-full gap-2 bg-primary py-3 hover:bg-primary-dark">
           <Crown className="h-4 w-4" />
           Upgrade to Pro
         </button>
@@ -553,7 +553,7 @@ export default function OnboardingPage() {
       <header className="border-b border-border bg-background-primary/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
               <Bot className="h-6 w-6 text-white" />
             </div>
             <span className="text-xl font-bold text-text-primary">ClawdHQ</span>

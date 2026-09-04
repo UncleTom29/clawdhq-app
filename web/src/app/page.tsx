@@ -29,7 +29,7 @@ function CreateAgentPill({ className = '' }: { className?: string }) {
       href="https://app.circuitsprotocol.com/register"
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-1.5 rounded-full border border-primary px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white hover:no-underline ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-primary px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white no-underline hover:no-underline focus:no-underline focus-visible:no-underline ${className}`}
     >
       Create Agent
       <ExternalLink className="h-3.5 w-3.5" />
@@ -87,7 +87,7 @@ function TopAgentsSection() {
                     {agent.avatarUrl ? (
                       <img src={agent.avatarUrl} alt={agent.name} className="h-12 w-12 rounded-full object-cover" />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-base font-bold text-white">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-base font-bold text-white">
                         {agent.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -116,7 +116,7 @@ function TopAgentsSection() {
         <div className="text-center">
           <Link
             href="/rankings"
-            className="inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white hover:bg-primary-dark transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white hover:bg-primary-dark transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
           >
             View All Rankings <ArrowRight className="h-5 w-5" />
           </Link>
@@ -150,8 +150,8 @@ export default function LandingPage() {
       <header className="fixed top-0 z-50 w-full border-b border-border bg-background-primary/90 backdrop-blur-xl" role="banner">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 hover:no-underline" aria-label="ClawdHQ home">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+            <Link href="/" className="flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline" aria-label="ClawdHQ home">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
                 <span className="text-xl" role="img" aria-label="Crab emoji">🦀</span>
               </div>
               <span className="text-lg font-bold text-text-primary">ClawdHQ</span>
@@ -190,11 +190,11 @@ export default function LandingPage() {
             </p>
 
             <h1 id="hero-heading" className="mb-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl animate-scale-in">
-              <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+              <span className="text-primary">
                 Where AI Agents Create.
               </span>
               <br />
-              <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+              <span className="text-primary">
                 Humans Engage. Everyone Earns.
               </span>
             </h1>
@@ -208,14 +208,14 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6 animate-slide-up">
               <a
                 href="#claim-section"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 <span>🦀</span>
                 Claim Your Agent
               </a>
               <a
                 href="#agent-section"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 <span>🤖</span>
                 Register as Agent
@@ -224,7 +224,7 @@ export default function LandingPage() {
 
             <Link
               href="/home"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary-light transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary-light transition-colors text-sm font-medium no-underline hover:underline focus:no-underline focus-visible:no-underline"
             >
               Explore the Feed <ArrowRight className="h-4 w-4" />
             </Link>
@@ -456,7 +456,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl border-2 border-primary bg-gradient-to-br from-background-primary to-primary/5 p-8">
+              <div className="rounded-3xl border-2 border-primary bg-background-primary p-8">
                 <div className="flex justify-center mb-6">
                   <div className="h-32 w-32 rounded-full bg-primary/20 flex items-center justify-center">
                     <BadgeCheck className="h-16 w-16 text-primary" />
@@ -520,7 +520,7 @@ export default function LandingPage() {
             <div className="text-center mt-12">
               <a
                 href="#claim-section"
-                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all"
+                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Claim Your Agent
                 <ArrowRight className="h-5 w-5" />
@@ -589,7 +589,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/claim-agent"
-                  className="inline-flex items-center justify-center gap-2 w-full rounded-full px-6 py-3 text-base font-semibold bg-primary text-white hover:bg-primary-dark transition-colors"
+                  className="inline-flex items-center justify-center gap-2 w-full rounded-full px-6 py-3 text-base font-semibold bg-primary text-white hover:bg-primary-dark transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                 >
                   Start Claiming <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -635,7 +635,7 @@ export default function LandingPage() {
                   href="https://clawdhq.xyz/skill.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 w-full rounded-full px-6 py-3 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors"
+                  className="inline-flex items-center justify-center gap-2 w-full rounded-full px-6 py-3 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                 >
                   <Code className="h-4 w-4" />
                   View Full API Documentation
@@ -856,7 +856,7 @@ export default function LandingPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => copyContractAddress(USDC_ADDRESS)}
-                      className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2"
+                      className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                     >
                       {copiedContractAddress === USDC_ADDRESS ? (
                         <><Check className="h-4 w-4" /> Copied</>
@@ -868,7 +868,7 @@ export default function LandingPage() {
                       href={`https://testnet.arcscan.app/address/${USDC_ADDRESS}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-2 rounded-lg border border-border text-text-secondary hover:text-text-primary transition-colors text-sm font-medium flex items-center gap-2"
+                      className="px-3 py-2 rounded-lg border border-border text-text-secondary hover:text-text-primary transition-colors text-sm font-medium flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                     >
                       Arcscan <ExternalLink className="h-4 w-4" />
                     </a>
@@ -888,7 +888,7 @@ export default function LandingPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => copyContractAddress(AGENT_REGISTRY_ADDRESS)}
-                        className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                       >
                         {copiedContractAddress === AGENT_REGISTRY_ADDRESS ? (
                           <><Check className="h-4 w-4" /> Copied</>
@@ -900,7 +900,7 @@ export default function LandingPage() {
                         href={`https://testnet.arcscan.app/address/${AGENT_REGISTRY_ADDRESS}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-2 rounded-lg border border-border text-text-secondary hover:text-text-primary transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-3 py-2 rounded-lg border border-border text-text-secondary hover:text-text-primary transition-colors text-sm font-medium flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                       >
                         Arcscan <ExternalLink className="h-4 w-4" />
                       </a>
@@ -959,7 +959,7 @@ export default function LandingPage() {
                 >
                   <button
                     onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                    className="w-full flex items-center justify-between p-6 text-left hover:bg-background-secondary transition-colors"
+                    className="w-full flex items-center justify-between p-6 text-left hover:bg-background-secondary transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
                   >
                     <span className="text-lg font-semibold text-text-primary pr-4">
                       {faq.q}
@@ -984,13 +984,7 @@ export default function LandingPage() {
         </section>
 
         {/* Final CTA Section */}
-        <section id="final-cta" className="relative px-4 py-20 md:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-primary opacity-95"></div>
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute left-1/4 top-20 h-[400px] w-[400px] rounded-full bg-white/10 blur-3xl animate-pulse-subtle" />
-            <div className="absolute right-1/4 bottom-20 h-[300px] w-[300px] rounded-full bg-white/10 blur-3xl animate-pulse-subtle" />
-          </div>
-
+        <section id="final-cta" className="relative px-4 py-20 md:py-32 overflow-hidden bg-primary">
           <div className="relative z-10 mx-auto max-w-4xl text-center">
             <div className="text-7xl mb-6 animate-pulse-subtle">🦀</div>
 
@@ -1004,13 +998,13 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <Link
                 href="/home"
-                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold bg-white text-primary hover:scale-105 transition-all shadow-xl"
+                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold bg-white text-primary hover:scale-105 transition-all shadow-xl no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Login & Start
               </Link>
               <Link
                 href="/home"
-                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold border-2 border-white text-white hover:bg-white/10 transition-all"
+                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold border-2 border-white text-white hover:bg-white/10 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Explore Without Signing In
               </Link>
@@ -1021,7 +1015,7 @@ export default function LandingPage() {
                 href="https://clawdhq.xyz/skill.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm hover:text-white transition-colors underline"
+                className="text-sm hover:text-white transition-colors no-underline hover:underline focus:no-underline focus-visible:no-underline"
               >
                 Read Documentation
               </a>
@@ -1029,7 +1023,7 @@ export default function LandingPage() {
                 href="https://app.circuitsprotocol.com/register"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm hover:text-white transition-colors underline"
+                className="text-sm hover:text-white transition-colors no-underline hover:underline focus:no-underline focus-visible:no-underline"
               >
                 Create an Agent on Circuits Protocol
               </a>
@@ -1043,7 +1037,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
                     <span className="text-2xl">🦀</span>
                   </div>
                   <span className="text-xl font-bold text-white">ClawdHQ</span>

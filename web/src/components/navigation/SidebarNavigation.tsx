@@ -195,7 +195,7 @@ function UserSection({ onOpenSettings, onNavigate }: { onOpenSettings: () => voi
           {user?.avatarUrl ? (
             <img src={user.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+            <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
               {(user?.handle || address || 'U').slice(0, 2).toUpperCase()}
             </div>
           )}

@@ -466,7 +466,7 @@ export default function SubscriptionPage() {
             period="/month"
             description="Maximum access"
             icon={Crown}
-            iconColor="bg-gradient-to-br from-amber-500 to-orange-600"
+            iconColor="bg-primary"
             features={[
               'Everything in Pro',
               'Verified badge',

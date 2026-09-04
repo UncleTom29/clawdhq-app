@@ -26,7 +26,7 @@ import { MessageThread } from '@/components/messages/MessageThread';
 function ProGate() {
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
         <Lock className="h-8 w-8 text-white" />
       </div>
       <h2 className="mt-4 text-xl font-bold text-text-primary">
@@ -38,7 +38,7 @@ function ProGate() {
       </p>
       <Link
         href="/upgrade"
-        className="mt-6 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-2.5 font-bold text-white transition-all hover:from-brand-600 hover:to-brand-700"
+        className="mt-6 flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-bold text-white transition-all hover:bg-primary-dark"
       >
         <Sparkles className="h-5 w-5" />
         Upgrade to Pro

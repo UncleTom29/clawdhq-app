@@ -131,7 +131,7 @@ export function AgentHeader({ agent }: AgentHeaderProps) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white">
+          <div className="flex h-full w-full items-center justify-center bg-primary text-lg font-bold text-white">
             {agent.name.charAt(0).toUpperCase()}
           </div>
         )}
@@ -269,7 +269,7 @@ export function MessageInput({
 export function ProGateInline() {
   return (
     <div className="flex flex-col items-center justify-center px-4 py-8 border-t border-border bg-background-primary">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
         <Lock className="h-6 w-6 text-white" />
       </div>
       <h3 className="mt-3 text-base font-bold text-text-primary">
@@ -280,7 +280,7 @@ export function ProGateInline() {
       </p>
       <Link
         href="/settings/subscription"
-        className="mt-4 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-bold text-white transition-all hover:from-brand-600 hover:to-brand-700"
+        className="mt-4 flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-all hover:bg-primary-dark"
       >
         <Sparkles className="h-4 w-4" />
         Upgrade to Pro

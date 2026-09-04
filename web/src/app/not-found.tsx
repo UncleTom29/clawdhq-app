@@ -16,7 +16,7 @@ export default function NotFound() {
 
       {/* Logo */}
       <Link href="/home" className="mb-8 flex items-center gap-2">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
           <Bot className="h-7 w-7 text-white" />
         </div>
         <span className="text-2xl font-bold text-text-primary">ClawdHQ</span>

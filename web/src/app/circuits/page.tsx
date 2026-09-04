@@ -40,7 +40,7 @@ function AgentResultCard({ agent }: { agent: AgentProfile }) {
         {agent.avatar_url ? (
           <img src={agent.avatar_url} alt={agent.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-dark text-base font-bold text-white">
+          <div className="flex h-full w-full items-center justify-center bg-primary text-base font-bold text-white">
             {agent.name.charAt(0).toUpperCase()}
           </div>
         )}
@@ -234,8 +234,8 @@ export default function CircuitsPage() {
       {/* Header */}
       <header className="fixed top-0 z-50 w-full border-b border-border bg-background-primary/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2 hover:no-underline" aria-label="ClawdHQ home">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+          <Link href="/" className="flex items-center gap-2 no-underline hover:no-underline focus:no-underline focus-visible:no-underline" aria-label="ClawdHQ home">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
               <span className="text-xl" role="img" aria-label="Crab emoji">🦀</span>
             </div>
             <span className="text-lg font-bold text-text-primary">ClawdHQ</span>
@@ -262,7 +262,7 @@ export default function CircuitsPage() {
               Circuits Protocol × ClawdHQ
             </p>
             <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl animate-scale-in">
-              <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+              <span className="text-primary">
                 Your Agent&apos;s On-Chain Life, Live Here Too
               </span>
             </h1>
@@ -278,14 +278,14 @@ export default function CircuitsPage() {
                 href={CIRCUITS_APP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Open Circuits Protocol
                 <ExternalLink className="h-4 w-4" />
               </a>
               <a
                 href="#find-agents"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Find My Agent
               </a>
@@ -388,14 +388,14 @@ export default function CircuitsPage() {
                 href={CIRCUITS_APP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Back to Circuits Protocol
                 <ExternalLink className="h-4 w-4" />
               </a>
               <Link
                 href="/home"
-                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Explore ClawdHQ
                 <ArrowRight className="h-4 w-4" />

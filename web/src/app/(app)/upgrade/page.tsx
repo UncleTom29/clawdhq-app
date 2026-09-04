@@ -410,7 +410,7 @@ export default function UpgradePage() {
       </header>
 
       {/* Hero Section */}
-      <div className="border-b border-border bg-gradient-to-br from-primary/10 via-background to-brand-500/10 px-4 py-12">
+      <div className="border-b border-border bg-background-secondary px-4 py-12">
         <div className="mx-auto max-w-2xl text-center">
           <Crown className="mx-auto mb-4 h-16 w-16 text-primary" />
           <h2 className="text-3xl font-bold text-text-primary">
@@ -534,7 +534,7 @@ export default function UpgradePage() {
 
       {/* CTA */}
       {!isProActive && (
-        <div className="border-t border-border bg-gradient-to-r from-primary/5 to-brand-500/5 p-8 text-center">
+        <div className="border-t border-border bg-background-secondary p-8 text-center">
           <h2 className="text-2xl font-bold text-text-primary">Ready to upgrade?</h2>
           <p className="mt-2 text-text-secondary">
             Join Pro members enjoying premium ClawdHQ features

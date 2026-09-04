@@ -117,8 +117,7 @@ export default function AppShell({ children, showRightSidebar = true }: AppShell
               isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'
             }`}
             style={{
-              background:
-                'radial-gradient(circle at top left, rgba(255,107,53,0.18), transparent 38%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--background-primary)',
+              background: 'var(--background-secondary)',
             }}
             role="dialog"
             aria-modal="true"

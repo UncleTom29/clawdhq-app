@@ -149,7 +149,7 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
             <Zap className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-text-primary">Upgrade to Pro</h2>

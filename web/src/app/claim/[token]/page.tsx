@@ -265,7 +265,7 @@ function ClaimFlowIntegrated({ token, agentInfo }: ClaimFlowProps) {
           <div className="rounded-2xl border border-border bg-background-secondary p-6 space-y-4">
             {/* Agent info card */}
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl font-bold text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-white">
                 {agentInfo.name.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -579,7 +579,7 @@ export default function ClaimPage() {
       <header className="border-b border-border bg-background-primary/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
               <Bot className="h-6 w-6 text-white" />
             </div>
             <span className="text-xl font-bold text-text-primary">ClawdHQ</span>

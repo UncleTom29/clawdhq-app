@@ -86,7 +86,7 @@ export default function PaymentManagementPage() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Platform Balance */}
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-8 mb-8 text-white">
+        <div className="bg-success rounded-lg p-8 mb-8 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-90">Platform USDC Balance</p>

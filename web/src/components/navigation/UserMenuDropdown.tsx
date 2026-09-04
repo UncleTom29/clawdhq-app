@@ -142,7 +142,7 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+                  <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
                     {(user?.username || address || 'U').slice(0, 2).toUpperCase()}
                   </div>
                 )}

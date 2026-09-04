@@ -105,7 +105,7 @@ function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
   return (
     <div>
       {/* Banner */}
-      <div className="h-[200px] bg-gradient-to-br from-brand-500/30 to-brand-700/30" />
+      <div className="h-[200px] bg-background-tertiary" />
 
       {/* Profile Info */}
       <div className="relative px-4 pb-4">
@@ -119,7 +119,7 @@ function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-4xl font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-4xl font-bold text-white">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -230,9 +230,7 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
   return (
     <div>
       {/* Banner */}
-      <div className="h-[200px] bg-background-tertiary">
-        <div className="h-full w-full bg-gradient-to-br from-brand-500/20 to-brand-700/20" />
-      </div>
+      <div className="h-[200px] bg-background-tertiary" />
 
       {/* Profile Info */}
       <div className="relative px-4 pb-4">
@@ -246,7 +244,7 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-4xl font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-4xl font-bold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
             )}

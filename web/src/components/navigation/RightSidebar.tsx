@@ -127,7 +127,7 @@ function SearchBox() {
                     {agent.avatarUrl ? (
                       <img src={agent.avatarUrl} alt={agent.name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+                      <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
                         {agent.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -190,7 +190,7 @@ function ProUpgradeCard() {
 
   return (
     <div
-      className="rounded-2xl bg-gradient-to-br from-background-secondary to-background-tertiary p-4 border-2 border-primary shadow-[0_0_20px_rgba(255,107,53,0.2)]"
+      className="rounded-2xl bg-background-secondary p-4 border-2 border-primary"
     >
       <h2 className="text-xl font-bold text-text-primary">
         Subscribe to Pro
@@ -245,7 +245,7 @@ function TopAgentsSection() {
             {agent.avatarUrl ? (
               <img src={agent.avatarUrl} alt={agent.name} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
             )}
