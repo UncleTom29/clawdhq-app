@@ -395,7 +395,10 @@ function toOwnerInfo(agent: any) {
     };
 }
 
-function toAgentProfile(agent: any) {
+function toAgentProfile(agent: any): any {
+    if (!agent) {
+        return null;
+    }
     return {
         id: agent.id,
         handle: agent.handle,
@@ -511,10 +514,40 @@ async function buildStoredAd(req: Request, advertiser: string, amountUsdc: strin
 }
 
 function toPostData(post: any) {
+    const agentProfile = toAgentProfile(post.agent);
     return {
         id: post.id,
         agent_id: post.agentId,
-        agent: toAgentProfile(post.agent),
+        agent: agentProfile || {
+            id: post.agentId,
+            handle: 'agent',
+            name: 'Agent',
+            bio: null,
+            avatar_url: null,
+            banner_url: null,
+            is_claimed: false,
+            is_active: true,
+            is_verified: false,
+            is_fully_verified: false,
+            model_info: null,
+            skills: [],
+            follower_count: 0,
+            following_count: 0,
+            post_count: 0,
+            total_earnings: 0,
+            last_heartbeat: null,
+            uptime_percentage: 0,
+            owner: null,
+            owner_wallet: null,
+            payout_wallet: null,
+            circle_wallet_address: null,
+            wallet_type: null,
+            token_id: null,
+            mint_status: 'unminted',
+            dm_opt_in: false,
+            created_at: post.createdAt ? post.createdAt.toISOString() : new Date().toISOString(),
+            last_active: post.createdAt ? post.createdAt.toISOString() : new Date().toISOString(),
+        },
         content: post.content,
         media: Array.isArray(post.media) ? post.media : [],
         link_url: null,
@@ -589,7 +622,13 @@ async function fetchPosts(params: {
 
     const orderBy =
         params.type === 'trending'
-            ? [{ likeCount: 'desc' as const }, { createdAt: 'desc' as const }, { id: 'desc' as const }]
+            ? [
+                { likeCount: 'desc' as const },
+                { replyCount: 'desc' as const },
+                { repostCount: 'desc' as const },
+                { createdAt: 'desc' as const },
+                { id: 'desc' as const },
+            ]
             : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
 
     if (page !== undefined && !params.cursor) {
@@ -1672,7 +1711,7 @@ router.get('/agents/:handle', async (req: Request, res: Response) => {
         return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
     }
 
-    const profile: Record<string, unknown> = toAgentProfile(agent);
+    const profile: Record<string, unknown> = toAgentProfile(agent) || {};
 
     // Surface the claim code to whoever connects the wallet this agent was
     // registered with — not just whoever originally received the one-time
@@ -2058,14 +2097,28 @@ router.get('/search/posts', async (req: Request, res: Response) => {
 
 router.get('/trending/hashtags', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(String(req.query.limit || '10'), 10) || 10, 20);
-    const posts = await prisma.post.findMany({
+    let posts = await prisma.post.findMany({
         where: {
             isDeleted: false,
+            content: { contains: '#' },
             createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
         select: { content: true, likeCount: true },
+        orderBy: [{ likeCount: 'desc' }, { replyCount: 'desc' }],
         take: 100,
     });
+
+    if (posts.length < 2) {
+        posts = await prisma.post.findMany({
+            where: {
+                isDeleted: false,
+                content: { contains: '#' },
+            },
+            select: { content: true, likeCount: true },
+            orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+            take: 100,
+        });
+    }
 
     const trends = buildHashtags(posts, limit);
     sendData(res, trends);
@@ -2075,30 +2128,41 @@ router.get('/explore/trending', async (req: Request, res: Response) => {
     const trendLimit = Math.min(parseInt(String(req.query.limit || '10'), 10) || 10, 20);
     const topAgents = await prisma.agent.findMany({
         take: 5,
-        orderBy: [{ currentScore: 'desc' }, { followerCount: 'desc' }],
+        orderBy: [{ followerCount: 'desc' }, { postCount: 'desc' }],
     });
 
     const recentPosts = await prisma.post.findMany({
         where: { isDeleted: false },
         include: { agent: true },
-        orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ likeCount: 'desc' }, { replyCount: 'desc' }, { createdAt: 'desc' }],
         take: 5,
     });
-    const trendSeedPosts = await prisma.post.findMany({
+    let trendSeedPosts = await prisma.post.findMany({
         where: {
             isDeleted: false,
-            content: { contains: '#', mode: 'insensitive' },
+            content: { contains: '#' },
             createdAt: { gte: new Date(Date.now() - 72 * 60 * 60 * 1000) },
         },
         select: { content: true, likeCount: true },
         orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
         take: 50,
     });
+    if (trendSeedPosts.length === 0) {
+        trendSeedPosts = await prisma.post.findMany({
+            where: {
+                isDeleted: false,
+                content: { contains: '#' },
+            },
+            select: { content: true, likeCount: true },
+            orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+            take: 50,
+        });
+    }
     const trends = buildHashtags(trendSeedPosts, trendLimit);
 
     sendData(res, {
         trends,
-        top_agents: topAgents.map(toAgentProfile),
+        top_agents: topAgents.map(toAgentProfile).filter(Boolean),
         posts: recentPosts.map(toPostData),
     });
 });

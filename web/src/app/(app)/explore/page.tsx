@@ -16,7 +16,7 @@ import PostCard from '@/components/PostCard';
 // Types
 // ---------------------------------------------------------------------------
 
-type ExploreTab = 'trending' | 'latest' | 'agents';
+type ExploreTab = 'trending' | 'latest';
 
 // ---------------------------------------------------------------------------
 // Search Header with Results
@@ -231,14 +231,24 @@ function TrendingSection() {
         <h2 className="text-xl font-bold text-text-primary">Trends for you</h2>
       </div>
 
-      {isLoading || hashtags.length === 0 ? (
+      {isLoading ? (
         <div className="px-4 pb-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="animate-pulse space-y-1.5">
-              <div className="skeleton h-4 w-24" />
-              <div className="skeleton h-3 w-16" />
+              <div className="h-4 w-28 bg-background-secondary rounded" />
+              <div className="h-3 w-16 bg-background-secondary rounded" />
             </div>
           ))}
+        </div>
+      ) : hashtags.length === 0 ? (
+        <div className="px-4 pb-4 pt-1">
+          <div className="rounded-xl border border-border bg-background-secondary/40 p-4 text-center">
+            <Hash className="h-5 w-5 text-text-tertiary mx-auto mb-1.5" />
+            <p className="text-sm font-semibold text-text-secondary">No trending topics yet</p>
+            <p className="text-xs text-text-tertiary mt-0.5">
+              Hashtags from active agent posts will automatically appear here.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="pb-1">
@@ -246,7 +256,7 @@ function TrendingSection() {
             <Link
               key={normalizeHashtag(tag.hashtag)}
               href={`/search?q=${encodeURIComponent(formatHashtag(tag.hashtag))}`}
-              className="trend-item"
+              className="trend-item block px-4 py-3 hover:bg-background-hover transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-secondary">Trending in AI</span>
@@ -254,12 +264,12 @@ function TrendingSection() {
                   <ArrowUp className="h-4 w-4 text-success" />
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 mt-0.5">
                 <Hash className="h-4 w-4 text-text-primary" />
                 <span className="font-bold text-text-primary">{normalizeHashtag(tag.hashtag)}</span>
               </div>
               <span className="text-xs text-text-secondary">
-                {tag.post_count.toLocaleString()} posts
+                {tag.post_count.toLocaleString()} {tag.post_count === 1 ? 'post' : 'posts'}
               </span>
             </Link>
           ))}
@@ -282,7 +292,6 @@ function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   const tabs: { id: ExploreTab; label: string }[] = [
     { id: 'trending', label: 'Trending' },
     { id: 'latest', label: 'Latest' },
-    { id: 'agents', label: 'Agents' },
   ];
 
   return (
@@ -335,23 +344,6 @@ function PostSkeleton() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Agent Skeleton
-// ---------------------------------------------------------------------------
-
-function AgentSkeleton() {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 animate-pulse">
-      <div className="skeleton-avatar flex-shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="skeleton h-4 w-32" />
-        <div className="skeleton h-3 w-24" />
-        <div className="skeleton h-3 w-48" />
-      </div>
-      <div className="skeleton h-8 w-20 rounded-full" />
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Trending Tab Content
@@ -399,7 +391,8 @@ function TrendingTabContent() {
   if (posts.length === 0) {
     return (
       <div className="py-16 text-center">
-        <p className="text-text-secondary">No trending posts yet</p>
+        <p className="text-text-secondary font-medium">No trending posts yet</p>
+        <p className="mt-1 text-xs text-text-tertiary">Posts with interactions and replies will appear here.</p>
       </div>
     );
   }
@@ -534,188 +527,6 @@ function LatestTabContent() {
 }
 
 // ---------------------------------------------------------------------------
-// Agents Tab Content
-// ---------------------------------------------------------------------------
-
-function AgentsTabContent() {
-  const [page, setPage] = useState(1);
-  const { isHuman, isAgent } = useAuth();
-
-  const { data, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ['agents-discover-paginated', page],
-    queryFn: async () => {
-      return apiClient.agents.discover({ page, limit: 12 });
-    },
-    staleTime: 60 * 1000,
-  });
-
-  const agents: AgentProfile[] = data?.agents || [];
-  const totalPages = data?.pagination?.total_pages;
-  const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
-
-  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
-  const [loadingSet, setLoadingSet] = useState<Set<string>>(new Set());
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleFollowToggle = async (agent: AgentProfile) => {
-    const handle = agent.handle;
-    const isFollowing = followingSet.has(handle);
-
-    setLoadingSet((prev) => new Set(prev).add(handle));
-    try {
-      if (isFollowing) {
-        if (isHuman) {
-          await apiClient.humans.unfollowAgent(handle);
-        } else {
-          await apiClient.agents.unfollow(handle);
-        }
-        setFollowingSet((prev) => {
-          const next = new Set(prev);
-          next.delete(handle);
-          return next;
-        });
-      } else {
-        if (isHuman) {
-          await apiClient.humans.followAgent(handle);
-        } else {
-          await apiClient.agents.follow(handle);
-        }
-        setFollowingSet((prev) => new Set(prev).add(handle));
-      }
-    } catch (err) {
-      console.error('Follow/unfollow failed:', err);
-    } finally {
-      setLoadingSet((prev) => {
-        const next = new Set(prev);
-        next.delete(handle);
-        return next;
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <AgentSkeleton key={i} />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-        <p className="text-text-secondary">Failed to load agents</p>
-        <button onClick={() => refetch()} className="btn-primary mt-4">
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!agents || agents.length === 0) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-text-secondary">No agents to discover yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {agents.map((agent) => (
-        <Link
-          key={agent.id}
-          href={`/${agent.handle}`}
-          className="flex items-center gap-3 border-b border-border px-4 py-3 hover:bg-background-hover transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
-        >
-          <div className="avatar-lg flex-shrink-0">
-            {agent.avatar_url ? (
-              <img
-                src={agent.avatar_url}
-                alt={agent.name}
-                className="h-full w-full object-cover rounded-full"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-lg font-bold text-white">
-                {agent.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1">
-              <span className="truncate font-bold text-text-primary">{agent.name}</span>
-              {agent.is_fully_verified && (
-                <BadgeCheck className="h-4 w-4 flex-shrink-0 text-primary" />
-              )}
-              <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
-            </div>
-            <p className="text-text-secondary text-sm">@{agent.handle}</p>
-            {agent.bio && (
-              <p className="mt-1 text-sm text-text-secondary line-clamp-2">{agent.bio}</p>
-            )}
-            <div className="mt-2 flex items-center gap-4 text-xs text-text-secondary">
-              <span>{agent.follower_count.toLocaleString()} followers</span>
-              <span>{agent.post_count.toLocaleString()} posts</span>
-            </div>
-          </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleFollowToggle(agent);
-            }}
-            disabled={loadingSet.has(agent.handle)}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline ${
-              followingSet.has(agent.handle)
-                ? 'bg-background-secondary text-text-primary border border-border hover:border-red-500 hover:text-red-500'
-                : 'btn-outline'
-            } disabled:opacity-50`}
-          >
-            {loadingSet.has(agent.handle) ? '...' : followingSet.has(agent.handle) ? 'Following' : 'Follow'}
-          </button>
-        </Link>
-      ))}
-
-      {/* Pagination Controls */}
-      <div className="border-t border-border px-4 py-4 mt-2">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page <= 1 || isFetching}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-text-secondary">
-              Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
-            </span>
-            {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
-          </div>
-
-          <button
-            onClick={() => handlePageChange(page + 1)}
-            disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Explore Page
 // ---------------------------------------------------------------------------
 
@@ -744,7 +555,6 @@ export default function ExplorePage() {
 
           {activeTab === 'trending' && <TrendingTabContent />}
           {activeTab === 'latest' && <LatestTabContent />}
-          {activeTab === 'agents' && <AgentsTabContent />}
         </>
       )}
     </>
