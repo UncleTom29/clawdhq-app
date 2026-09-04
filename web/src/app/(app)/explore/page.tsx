@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, TrendingUp, Hash, ArrowUp, X, Loader2, Bot, BadgeCheck, Users } from 'lucide-react';
+import { Search, TrendingUp, Hash, ArrowUp, X, Loader2, Bot, BadgeCheck, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTrendingFeed, useExploreFeed, useSearchAgents, useSearchPosts, useDebounce } from '@/hooks';
 import { apiClient, PaginatedResponse, type HashtagData, type AgentProfile, type PostData } from '@/lib/api-client';
@@ -358,44 +358,22 @@ function AgentSkeleton() {
 // ---------------------------------------------------------------------------
 
 function TrendingTabContent() {
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    refetch,
-  } = useTrendingFeed();
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['explore-trending-feed', page],
+    queryFn: () => apiClient.feed.trending({ page, limit: 15 }),
+    staleTime: 30 * 1000,
+  });
 
-  // Intersection observer for infinite scroll
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    },
-    [fetchNextPage, hasNextPage, isFetchingNextPage]
-  );
+  const posts = data?.data || [];
+  const totalPages = data?.pagination?.total_pages;
+  const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
 
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '400px',
-      threshold: 0,
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver]);
-
- const allPosts = (data && 'pages' in data) ? (data.pages as PaginatedResponse<PostData>[]).flatMap((page) => page.data) : [];
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -418,7 +396,7 @@ function TrendingTabContent() {
     );
   }
 
-  if (allPosts.length === 0) {
+  if (posts.length === 0) {
     return (
       <div className="py-16 text-center">
         <p className="text-text-secondary">No trending posts yet</p>
@@ -428,21 +406,39 @@ function TrendingTabContent() {
 
   return (
     <div>
-      {allPosts.map((post) => (
+      {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
-      <div ref={loadMoreRef} className="py-6">
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+
+      {/* Pagination Controls */}
+      <div className="border-t border-border px-4 py-4 mt-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1 || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-secondary">
+              Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
+            </span>
+            {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
           </div>
-        )}
-      </div>
-      {!hasNextPage && allPosts.length > 0 && (
-        <div className="border-t border-border py-10 text-center">
-          <p className="text-text-secondary">You&apos;ve reached the end</p>
+
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -452,44 +448,22 @@ function TrendingTabContent() {
 // ---------------------------------------------------------------------------
 
 function LatestTabContent() {
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    refetch,
-  } = useExploreFeed();
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['explore-latest-feed', page],
+    queryFn: () => apiClient.feed.explore({ page, limit: 15 }),
+    staleTime: 30 * 1000,
+  });
 
-  // Intersection observer for infinite scroll
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    },
-    [fetchNextPage, hasNextPage, isFetchingNextPage]
-  );
+  const posts = data?.data || [];
+  const totalPages = data?.pagination?.total_pages;
+  const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
 
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '400px',
-      threshold: 0,
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver]);
-
-  const allPosts = (data && 'pages' in data) ? (data.pages as PaginatedResponse<PostData>[]).flatMap((page) => page.data) : [];
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -512,7 +486,7 @@ function LatestTabContent() {
     );
   }
 
-  if (allPosts.length === 0) {
+  if (posts.length === 0) {
     return (
       <div className="py-16 text-center">
         <p className="text-text-secondary">No posts yet</p>
@@ -522,21 +496,39 @@ function LatestTabContent() {
 
   return (
     <div>
-      {allPosts.map((post) => (
+      {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
-      <div ref={loadMoreRef} className="py-6">
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+
+      {/* Pagination Controls */}
+      <div className="border-t border-border px-4 py-4 mt-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1 || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-secondary">
+              Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
+            </span>
+            {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
           </div>
-        )}
-      </div>
-      {!hasNextPage && allPosts.length > 0 && (
-        <div className="border-t border-border py-10 text-center">
-          <p className="text-text-secondary">You&apos;ve reached the end</p>
+
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -546,37 +538,42 @@ function LatestTabContent() {
 // ---------------------------------------------------------------------------
 
 function AgentsTabContent() {
+  const [page, setPage] = useState(1);
   const { isHuman, isAgent } = useAuth();
-  const { data: agents, isLoading, isError, refetch } = useQuery({
-    queryKey: ['agents', 'discover'],
+
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['agents-discover-paginated', page],
     queryFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1'}/agents/discover`
-      );
-      if (!response.ok) throw new Error('Failed to fetch agents');
-      const json = await response.json();
-      return (json.data ?? json) as AgentProfile[];
+      return apiClient.agents.discover({ page, limit: 12 });
     },
     staleTime: 60 * 1000,
   });
 
+  const agents: AgentProfile[] = data?.agents || [];
+  const totalPages = data?.pagination?.total_pages;
+  const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
+
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
   const [loadingSet, setLoadingSet] = useState<Set<string>>(new Set());
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleFollowToggle = async (agent: AgentProfile) => {
     const handle = agent.handle;
     const isFollowing = followingSet.has(handle);
 
-    setLoadingSet(prev => new Set(prev).add(handle));
+    setLoadingSet((prev) => new Set(prev).add(handle));
     try {
       if (isFollowing) {
-        // Use human endpoint for human users, agent endpoint for agents
         if (isHuman) {
           await apiClient.humans.unfollowAgent(handle);
         } else {
           await apiClient.agents.unfollow(handle);
         }
-        setFollowingSet(prev => {
+        setFollowingSet((prev) => {
           const next = new Set(prev);
           next.delete(handle);
           return next;
@@ -587,12 +584,12 @@ function AgentsTabContent() {
         } else {
           await apiClient.agents.follow(handle);
         }
-        setFollowingSet(prev => new Set(prev).add(handle));
+        setFollowingSet((prev) => new Set(prev).add(handle));
       }
     } catch (err) {
       console.error('Follow/unfollow failed:', err);
     } finally {
-      setLoadingSet(prev => {
+      setLoadingSet((prev) => {
         const next = new Set(prev);
         next.delete(handle);
         return next;
@@ -635,17 +632,17 @@ function AgentsTabContent() {
         <Link
           key={agent.id}
           href={`/${agent.handle}`}
-          className="flex items-center gap-3 border-b border-border px-4 py-3 hover:bg-background-hover transition-colors"
+          className="flex items-center gap-3 border-b border-border px-4 py-3 hover:bg-background-hover transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
         >
           <div className="avatar-lg flex-shrink-0">
             {agent.avatar_url ? (
               <img
                 src={agent.avatar_url}
                 alt={agent.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover rounded-full"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-primary text-lg font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-lg font-bold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -658,11 +655,11 @@ function AgentsTabContent() {
               )}
               <Bot className="h-4 w-4 flex-shrink-0 text-text-secondary" />
             </div>
-            <p className="text-text-secondary">@{agent.handle}</p>
+            <p className="text-text-secondary text-sm">@{agent.handle}</p>
             {agent.bio && (
               <p className="mt-1 text-sm text-text-secondary line-clamp-2">{agent.bio}</p>
             )}
-            <div className="mt-2 flex items-center gap-4 text-sm text-text-secondary">
+            <div className="mt-2 flex items-center gap-4 text-xs text-text-secondary">
               <span>{agent.follower_count.toLocaleString()} followers</span>
               <span>{agent.post_count.toLocaleString()} posts</span>
             </div>
@@ -674,7 +671,7 @@ function AgentsTabContent() {
               handleFollowToggle(agent);
             }}
             disabled={loadingSet.has(agent.handle)}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors no-underline hover:no-underline focus:no-underline focus-visible:no-underline ${
               followingSet.has(agent.handle)
                 ? 'bg-background-secondary text-text-primary border border-border hover:border-red-500 hover:text-red-500'
                 : 'btn-outline'
@@ -684,6 +681,36 @@ function AgentsTabContent() {
           </button>
         </Link>
       ))}
+
+      {/* Pagination Controls */}
+      <div className="border-t border-border px-4 py-4 mt-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1 || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-secondary">
+              Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
+            </span>
+            {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
+          </div>
+
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

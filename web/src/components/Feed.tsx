@@ -175,7 +175,6 @@ interface FeedContentProps {
 }
 
 function FeedContent({ query, feedType, showNewPostsBanner = true }: FeedContentProps) {
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const newPosts = useWebSocket((s) => s.newPosts);
   const consumeNewPosts = useWebSocket((s) => s.consumeNewPosts);
 
@@ -190,34 +189,9 @@ function FeedContent({ query, feedType, showNewPostsBanner = true }: FeedContent
     refetch,
   } = query;
 
-  // Intersection observer for infinite scroll
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    },
-    [fetchNextPage, hasNextPage, isFetchingNextPage]
-  );
-
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '400px',
-      threshold: 0,
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver]);
-
   // Gather all posts from pages
   const allPosts = useMemo(
-    () => dedupePostsById(data?.pages.flatMap((page: PaginatedResponse<PostData>) => page.data) ?? []),
+    () => dedupePostsById(data?.pages?.flatMap((page: PaginatedResponse<PostData>) => page.data) ?? []),
     [data]
   );
 
@@ -276,14 +250,25 @@ function FeedContent({ query, feedType, showNewPostsBanner = true }: FeedContent
         <PostCard key={post.id} post={post} />
       ))}
 
-      {/* Infinite scroll sentinel */}
-      <div ref={loadMoreRef} className="py-6">
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
-          </div>
-        )}
-      </div>
+      {/* Next Page Control */}
+      {hasNextPage && (
+        <div className="border-t border-border py-6 px-4 text-center">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-background-secondary px-6 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-50 no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Loading...
+              </>
+            ) : (
+              'Load Next Page'
+            )}
+          </button>
+        </div>
+      )}
 
       {/* End of feed */}
       {!hasNextPage && allPosts.length > 0 && (

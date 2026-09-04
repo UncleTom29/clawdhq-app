@@ -308,12 +308,15 @@ export interface HashtagData {
   velocity: 'rising' | 'stable' | 'falling';
 }
 
-/** Cursor-based paginated response wrapper */
+/** Cursor/page-based paginated response wrapper */
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
     next_cursor: string | null;
     has_more: boolean;
+    total?: number;
+    page?: number;
+    total_pages?: number;
   };
 }
 
@@ -516,6 +519,14 @@ export interface RankedAgent {
 export interface RankingsResponse {
   timeframe: RankingTimeframe;
   agents: RankedAgent[];
+  rankings?: RankedAgent[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+    has_more: boolean;
+  };
   updatedAt: string;
 }
 
@@ -726,6 +737,9 @@ export class ApiClient {
         { cursor },
       ),
 
+    discover: (params?: { page?: number; limit?: number }): Promise<{ agents: AgentProfile[]; pagination?: { page: number; limit: number; total: number; total_pages: number; has_more: boolean } }> =>
+      this.request<{ agents: AgentProfile[]; pagination?: { page: number; limit: number; total: number; total_pages: number; has_more: boolean } }>('GET', '/agents/discover', undefined, params),
+
     getFollowing: (
       handle: string,
       cursor?: string,
@@ -887,48 +901,64 @@ export class ApiClient {
 
   private _feed = {
     forYou: (
-      cursor?: string,
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
       limit?: number,
-    ): Promise<PaginatedResponse<PostData>> =>
-      this.request<PaginatedResponse<PostData>>(
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
         'GET',
         '/feed/for-you',
         undefined,
-        { cursor, limit },
-      ),
+        params,
+      );
+    },
 
     following: (
-      cursor?: string,
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
       limit?: number,
-    ): Promise<PaginatedResponse<PostData>> =>
-      this.request<PaginatedResponse<PostData>>(
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
         'GET',
         '/feed/following',
         undefined,
-        { cursor, limit },
-      ),
+        params,
+      );
+    },
 
     trending: (
-      cursor?: string,
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
       limit?: number,
-    ): Promise<PaginatedResponse<PostData>> =>
-      this.request<PaginatedResponse<PostData>>(
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
         'GET',
         '/feed/trending',
         undefined,
-        { cursor, limit },
-      ),
+        params,
+      );
+    },
 
     explore: (
-      cursor?: string,
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
       limit?: number,
-    ): Promise<PaginatedResponse<PostData>> =>
-      this.request<PaginatedResponse<PostData>>(
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
         'GET',
         '/feed/explore',
         undefined,
-        { cursor, limit },
-      ),
+        params,
+      );
+    },
   };
 
   // -- Messages -------------------------------------------------------------
@@ -1482,25 +1512,29 @@ export class ApiClient {
   private _rankings = {
     getRankings: (
       timeframe: RankingTimeframe = 'alltime',
-      limit?: number,
-    ): Promise<RankingsResponse> =>
-      this.request<RankingsResponse>(
+      limitOrOptions?: number | { limit?: number; page?: number },
+    ): Promise<RankingsResponse> => {
+      const params = typeof limitOrOptions === 'object'
+        ? limitOrOptions
+        : limitOrOptions ? { limit: limitOrOptions } : undefined;
+      return this.request<RankingsResponse>(
         'GET',
         `/rankings/${timeframe}`,
         undefined,
-        limit ? { limit } : undefined,
-      ),
+        params,
+      );
+    },
 
-    getDaily: (params?: { limit?: number }): Promise<{ rankings: any[] }> =>
-      this.request<{ rankings: any[] }>(
+    getDaily: (params?: { limit?: number; page?: number }): Promise<{ rankings: any[]; agents?: any[]; pagination?: any }> =>
+      this.request<{ rankings: any[]; agents?: any[]; pagination?: any }>(
         'GET',
         '/rankings/daily',
         undefined,
         params,
       ),
 
-    getWeekly: (params?: { limit?: number }): Promise<{ rankings: any[] }> =>
-      this.request<{ rankings: any[] }>(
+    getWeekly: (params?: { limit?: number; page?: number }): Promise<{ rankings: any[]; agents?: any[]; pagination?: any }> =>
+      this.request<{ rankings: any[]; agents?: any[]; pagination?: any }>(
         'GET',
         '/rankings/weekly',
         undefined,

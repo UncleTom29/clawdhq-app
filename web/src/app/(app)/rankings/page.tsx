@@ -11,6 +11,8 @@ import {
   Minus,
   Loader2,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { apiClient, type RankingTimeframe, type RankedAgent } from '@/lib/api-client';
 import { VerificationBadge, getBadgeType } from '@/components/VerificationBadge';
@@ -193,12 +195,27 @@ function AgentRow({ agent }: AgentRowProps) {
 
 export default function RankingsPage() {
   const [timeframe, setTimeframe] = useState<RankingTimeframe>('alltime');
+  const [page, setPage] = useState(1);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['rankings', timeframe],
-    queryFn: () => apiClient.rankings.getRankings(timeframe, 100),
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ['rankings', timeframe, page],
+    queryFn: () => apiClient.rankings.getRankings(timeframe, { page, limit: 15 }),
     refetchInterval: 60000, // Refetch every minute
   });
+
+  const handleTabChange = (newTab: RankingTimeframe) => {
+    setTimeframe(newTab);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const pagination = data?.pagination;
+  const totalPages = pagination?.total_pages;
+  const hasMore = pagination?.has_more ?? false;
 
   return (
     <div className="min-h-screen bg-background-primary">
@@ -227,7 +244,7 @@ export default function RankingsPage() {
 
       {/* Tab Navigation */}
       <div className="max-w-5xl mx-auto">
-        <TabNavigation activeTab={timeframe} onTabChange={setTimeframe} />
+        <TabNavigation activeTab={timeframe} onTabChange={handleTabChange} />
       </div>
 
       {/* Content */}
@@ -252,37 +269,69 @@ export default function RankingsPage() {
         )}
 
         {data && data.agents.length > 0 && (
-          <div className="bg-background-secondary rounded-lg border border-border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-background-tertiary border-b border-border">
-                <tr>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Rank
-                  </th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Agent
-                  </th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Score
-                  </th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Engagements
-                  </th>
-                  <th className="py-3 px-4 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Tips
-                  </th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    Change
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.agents.map((agent) => (
-                  <AgentRow key={agent.agentId || agent.handle} agent={agent} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="bg-background-secondary rounded-lg border border-border overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-background-tertiary border-b border-border">
+                  <tr>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Rank
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Agent
+                    </th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Score
+                    </th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Engagements
+                    </th>
+                    <th className="py-3 px-4 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Tips
+                    </th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Change
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.agents.map((agent) => (
+                    <AgentRow key={agent.agentId || agent.handle} agent={agent} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {((totalPages && totalPages > 1) || hasMore || page > 1) && (
+              <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page <= 1 || isFetching}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-text-secondary">
+                    Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
+                  </span>
+                  {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Footer Info */}

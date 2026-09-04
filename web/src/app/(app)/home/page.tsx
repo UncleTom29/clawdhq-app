@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Loader2, RefreshCw } from 'lucide-react';
-import { useForYouFeed, useFollowingFeed } from '@/hooks';
+import { Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useWebSocket } from '@/lib/websocket';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PostCard from '@/components/PostCard';
-import type { PostData, PaginatedResponse } from '@/lib/api-client';
+import { apiClient, api, type PostData, type PaginatedResponse } from '@/lib/api-client';
+import { useHumanAuthStore } from '@/stores/human-auth';
 import { dedupePostsById } from '@/lib/post-utils';
 
 // ---------------------------------------------------------------------------
@@ -295,61 +295,36 @@ interface FeedContentProps {
 }
 
 function FeedContent({ activeTab }: FeedContentProps) {
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const queryClient = useQueryClient();
+  const accessToken = useHumanAuthStore((s) => s.accessToken);
 
   // WebSocket real-time posts
   const newPosts = useWebSocket((s) => s.newPosts);
   const consumeNewPosts = useWebSocket((s) => s.consumeNewPosts);
   const [displayedNewPosts, setDisplayedNewPosts] = useState<PostData[]>([]);
 
-  // Use the appropriate feed hook based on active tab
-  const forYouQuery = useForYouFeed({ enabled: activeTab === 'for-you' });
-  const followingQuery = useFollowingFeed({ enabled: activeTab === 'following' });
-
-  const activeQuery = activeTab === 'for-you' ? forYouQuery : followingQuery;
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = activeQuery;
-
-  // Intersection observer for infinite scroll
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
+  // Query paginated feed
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['feed-paginated', activeTab, page],
+    queryFn: async () => {
+      if (activeTab === 'following') {
+        if (!accessToken) {
+          return { data: [], pagination: { next_cursor: null, has_more: false, total: 0, page: 1, total_pages: 1 } };
+        }
+        api.setToken(accessToken);
+        return apiClient.feed.following({ page, limit: 15 });
       }
+      return apiClient.feed.forYou({ page, limit: 15 });
     },
-    [fetchNextPage, hasNextPage, isFetchingNextPage]
-  );
-
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '400px',
-      threshold: 0,
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver]);
+    staleTime: 30 * 1000,
+  });
 
   // Handle showing new posts from WebSocket
   const handleShowNewPosts = useCallback(() => {
     setDisplayedNewPosts((prev) => [...newPosts, ...prev]);
     consumeNewPosts();
+    setPage(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [newPosts, consumeNewPosts]);
 
@@ -362,23 +337,24 @@ function FeedContent({ activeTab }: FeedContentProps) {
     setIsRefreshing(false);
   }, [refetch, consumeNewPosts]);
 
-  // Reset displayed new posts when tab changes
+  // Reset displayed new posts and page when tab changes
   useEffect(() => {
     setDisplayedNewPosts([]);
+    setPage(1);
   }, [activeTab]);
 
-  // Gather all posts from pages
-  const allPosts = useMemo(() => {
-    if (!data || !('pages' in data)) {
-      return [];
-    }
-
-    const paginatedPosts = (data.pages as PaginatedResponse<PostData>[]).flatMap((page) => page.data);
-    return dedupePostsById(paginatedPosts);
+  const posts = useMemo(() => {
+    return dedupePostsById(data?.data || []);
   }, [data]);
 
-  // New posts count for banner (only for for-you tab)
+  const totalPages = data?.pagination?.total_pages;
+  const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
   const pendingNewPostsCount = activeTab === 'for-you' ? newPosts.length : 0;
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Loading state
   if (isLoading) {
@@ -413,7 +389,7 @@ function FeedContent({ activeTab }: FeedContentProps) {
   }
 
   // Empty state
-  if (allPosts.length === 0 && displayedNewPosts.length === 0) {
+  if (posts.length === 0 && displayedNewPosts.length === 0) {
     return <EmptyState type={activeTab} />;
   }
 
@@ -431,27 +407,39 @@ function FeedContent({ activeTab }: FeedContentProps) {
         ))}
 
         {/* Paginated posts */}
-        {allPosts.map((post) => (
+        {posts.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
 
-        {/* Infinite scroll sentinel */}
-        <div ref={loadMoreRef} className="py-6">
-          {isFetchingNextPage && (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-            </div>
-          )}
-        </div>
+        {/* Pagination Navigation Bar */}
+        <div className="border-t border-border px-4 py-4 mt-2">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page <= 1 || isFetching}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </button>
 
-        {/* End of feed */}
-        {!hasNextPage && allPosts.length > 0 && (
-          <div className="border-t border-border py-10 text-center">
-            <p className="text-text-secondary">
-              You&apos;ve reached the end
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-text-secondary">
+                Page {page} {totalPages ? `of ${Math.max(totalPages, 1)}` : ''}
+              </span>
+              {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={!hasMore || (totalPages !== undefined && page >= totalPages) || isFetching}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-secondary px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-background-hover disabled:opacity-40 disabled:cursor-not-allowed no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </PullToRefresh>
   );

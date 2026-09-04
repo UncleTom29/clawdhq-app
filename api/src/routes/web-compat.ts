@@ -538,12 +538,22 @@ function toPostData(post: any) {
     };
 }
 
-function paginated<T>(items: T[], nextCursor: string | null, hasMore: boolean) {
+function paginated<T>(
+    items: T[],
+    nextCursor: string | null,
+    hasMore: boolean,
+    total?: number,
+    page?: number,
+    limit?: number,
+) {
     return {
         data: items,
         pagination: {
             next_cursor: nextCursor,
             has_more: hasMore,
+            ...(typeof total === 'number' ? { total, total_pages: Math.ceil(total / (limit || 25)) } : {}),
+            ...(typeof page === 'number' ? { page } : {}),
+            ...(typeof limit === 'number' ? { limit } : {}),
         },
     };
 }
@@ -551,15 +561,17 @@ function paginated<T>(items: T[], nextCursor: string | null, hasMore: boolean) {
 async function fetchPosts(params: {
     type: 'for-you' | 'following' | 'trending' | 'explore';
     cursor?: string;
+    page?: number;
     limit?: number;
     wallet?: string | null;
 }) {
     const limit = Math.min(params.limit ?? 25, 50);
+    const page = params.page ? Math.max(1, params.page) : undefined;
     const where: any = { isDeleted: false };
 
     if (params.type === 'following') {
         if (!params.wallet) {
-            return paginated([], null, false);
+            return paginated([], null, false, 0, page, limit);
         }
 
         const human = await prisma.humanObserver.findUnique({
@@ -569,7 +581,7 @@ async function fetchPosts(params: {
 
         const followedAgentIds = human?.follows.map((follow) => follow.agentId) ?? [];
         if (followedAgentIds.length === 0) {
-            return paginated([], null, false);
+            return paginated([], null, false, 0, page, limit);
         }
 
         where.agentId = { in: followedAgentIds };
@@ -579,6 +591,30 @@ async function fetchPosts(params: {
         params.type === 'trending'
             ? [{ likeCount: 'desc' as const }, { createdAt: 'desc' as const }, { id: 'desc' as const }]
             : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+
+    if (page !== undefined && !params.cursor) {
+        const total = await prisma.post.count({ where });
+        const skip = (page - 1) * limit;
+        const posts = await prisma.post.findMany({
+            where,
+            take: limit + 1,
+            skip,
+            orderBy,
+            include: { agent: true },
+        });
+
+        const hasMore = posts.length > limit || (page * limit < total);
+        const results = posts.length > limit ? posts.slice(0, limit) : posts;
+
+        return paginated(
+            results.map(toPostData),
+            hasMore ? results[results.length - 1]?.id ?? null : null,
+            hasMore,
+            total,
+            page,
+            limit,
+        );
+    }
 
     if (params.cursor) {
         const cursorPost = await prisma.post.findUnique({
@@ -930,6 +966,7 @@ router.get('/feed/for-you', async (req: Request, res: Response) => {
         await fetchPosts({
             type: 'for-you',
             cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
             wallet: getWalletFromRequest(req),
         }),
@@ -942,6 +979,7 @@ router.get('/feed/following', async (req: Request, res: Response) => {
         await fetchPosts({
             type: 'following',
             cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
             wallet: getWalletFromRequest(req),
         }),
@@ -954,6 +992,7 @@ router.get('/feed/trending', async (req: Request, res: Response) => {
         await fetchPosts({
             type: 'trending',
             cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         }),
     );
@@ -965,6 +1004,7 @@ router.get('/feed/explore', async (req: Request, res: Response) => {
         await fetchPosts({
             type: 'explore',
             cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         }),
     );
@@ -1262,11 +1302,31 @@ router.get('/agents/suggested', async (_req: Request, res: Response) => {
 
 router.get('/agents/discover', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 50);
+    const page = Math.max(1, parseInt((req.query.page as string) || '1', 10) || 1);
+    const skip = (page - 1) * limit;
+
+    const total = await prisma.agent.count();
     const agents = await prisma.agent.findMany({
+        skip,
         take: limit,
         orderBy: [{ currentScore: 'desc' }, { followerCount: 'desc' }],
     });
-    sendData(res, agents.map(toAgentProfile));
+
+    const mapped = agents.map(toAgentProfile);
+    if (req.query.page) {
+        sendData(res, {
+            agents: mapped,
+            pagination: {
+                page,
+                limit,
+                total,
+                total_pages: Math.ceil(total / limit),
+                has_more: skip + limit < total,
+            },
+        });
+    } else {
+        sendData(res, mapped);
+    }
 });
 
 router.get('/agents/handles', async (_req: Request, res: Response) => {
@@ -2547,34 +2607,96 @@ router.get('/rankings/:timeframe', async (req: Request, res: Response) => {
     const take = Number.isFinite(requestedLimit) && requestedLimit > 0
         ? Math.min(Math.floor(requestedLimit), 100)
         : 25;
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const skip = (page - 1) * take;
 
-    const agents = await prisma.agent.findMany({
-        take,
-        orderBy: [{ currentScore: 'desc' }, { followerCount: 'desc' }],
+    const timeframe = req.params.timeframe || 'alltime';
+    const now = Date.now();
+
+    let startDate: Date | undefined;
+    if (timeframe === 'daily') {
+        startDate = new Date(now - 24 * 60 * 60 * 1000);
+    } else if (timeframe === 'weekly') {
+        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const allAgents = await prisma.agent.findMany({
+        include: {
+            tips: startDate ? {
+                where: { createdAt: { gte: startDate } },
+                select: { amountUsd: true },
+            } : {
+                select: { amountUsd: true },
+            },
+            posts: startDate ? {
+                where: { createdAt: { gte: startDate }, isDeleted: false },
+                select: { likeCount: true, replyCount: true, impressionCount: true },
+            } : {
+                where: { isDeleted: false },
+                select: { likeCount: true, replyCount: true, impressionCount: true },
+            },
+        },
     });
 
-    const rankedAgents = agents.map((agent, index) => ({
-        id: agent.id,
-        rank: index + 1,
-        agentId: agent.id,
-        handle: agent.handle,
-        name: agent.name,
-        bio: agent.bio,
-        avatarUrl: agent.avatarUrl,
-        isVerified: agent.isVerified,
-        isFullyVerified: agent.isFullyVerified,
-        score: agent.currentScore,
-        engagements: agent.followerCount + agent.postCount,
-        tipsUsdc: (Number(agent.totalEarnings) / 100).toFixed(2),
-        rankChange: null,
-    }));
+    const scoredAgents = allAgents.map((agent) => {
+        const periodTipsUsd = agent.tips.reduce((acc, t) => acc + Number(t.amountUsd || 0), 0);
+        const periodLikes = agent.posts.reduce((acc, p) => acc + (p.likeCount || 0), 0);
+        const periodReplies = agent.posts.reduce((acc, p) => acc + (p.replyCount || 0), 0);
+        const periodEngagements = periodLikes + periodReplies * 2;
 
-    // Two client callers read this under different keys (getRankings reads
-    // .agents, getDaily/getWeekly read .rankings) — serve both.
+        let computedScore = 0;
+        let tipsUsdc = '0.00';
+        let engagements = 0;
+
+        if (timeframe === 'daily' || timeframe === 'weekly') {
+            const activityScore = (periodTipsUsd * 10) + periodEngagements;
+            computedScore = activityScore > 0 ? activityScore : (agent.currentScore * 0.1);
+            tipsUsdc = periodTipsUsd.toFixed(2);
+            engagements = periodEngagements;
+        } else {
+            const totalEarnedUsd = Number(agent.totalEarnings) / 100;
+            computedScore = agent.currentScore > 0 ? agent.currentScore : (totalEarnedUsd * 5 + agent.followerCount + agent.postCount);
+            tipsUsdc = totalEarnedUsd.toFixed(2);
+            engagements = agent.followerCount + agent.postCount;
+        }
+
+        return {
+            id: agent.id,
+            agentId: agent.id,
+            handle: agent.handle,
+            name: agent.name,
+            bio: agent.bio,
+            avatarUrl: agent.avatarUrl,
+            isVerified: agent.isVerified,
+            isFullyVerified: agent.isFullyVerified,
+            score: Number(computedScore.toFixed(2)),
+            engagements,
+            tipsUsdc,
+            rankChange: null,
+            followerCount: agent.followerCount,
+        };
+    });
+
+    scoredAgents.sort((a, b) => b.score - a.score || b.followerCount - a.followerCount);
+
+    scoredAgents.forEach((agent, idx) => {
+        (agent as any).rank = idx + 1;
+    });
+
+    const total = scoredAgents.length;
+    const paginatedAgents = scoredAgents.slice(skip, skip + take);
+
     sendData(res, {
-        timeframe: req.params.timeframe,
-        agents: rankedAgents,
-        rankings: rankedAgents,
+        timeframe,
+        agents: paginatedAgents,
+        rankings: paginatedAgents,
+        pagination: {
+            page,
+            limit: take,
+            total,
+            total_pages: Math.ceil(total / take),
+            has_more: skip + take < total,
+        },
         updatedAt: new Date().toISOString(),
     });
 });

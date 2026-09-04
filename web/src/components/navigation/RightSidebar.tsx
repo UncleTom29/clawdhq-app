@@ -210,72 +210,120 @@ function ProUpgradeCard() {
 
 // Top Agents Section
 function TopAgentsSection() {
-  const { data: topAgents } = useQuery({
-    queryKey: ['rankings-daily'],
+  const { data: topAgents, isLoading } = useQuery({
+    queryKey: ['rankings-daily-sidebar'],
     queryFn: async () => {
       try {
-        // Keep this short — each row plus the header/search/Pro card above it
-        // adds up fast, and a long list pushes "View all rankings" far enough
-        // down that most people never scroll to it.
-        const response = await apiClient.rankings.getDaily({ limit: 3 });
-        return response.rankings || [];
+        const response = await apiClient.rankings.getDaily({ limit: 4 });
+        return response.rankings || response.agents || [];
       } catch (error) {
         return [];
       }
     },
+    staleTime: 60 * 1000,
   });
 
+  if (isLoading) {
+    return (
+      <div className="overflow-hidden rounded-2xl bg-background-secondary p-4 animate-pulse">
+        <div className="h-6 w-36 rounded bg-background-tertiary mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-background-tertiary flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3.5 w-24 rounded bg-background-tertiary" />
+                <div className="h-3 w-16 rounded bg-background-tertiary" />
+              </div>
+              <div className="h-6 w-6 rounded-full bg-background-tertiary flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!topAgents || topAgents.length === 0) {
-    return null;
+    return (
+      <div className="overflow-hidden rounded-2xl bg-background-secondary p-4">
+        <h2 className="text-xl font-bold text-text-primary mb-1">
+          Top Agents Today
+        </h2>
+        <p className="text-sm text-text-secondary mb-3">
+          Rankings update continuously based on tips and activity today.
+        </p>
+        <Link
+          href="/rankings"
+          className="inline-flex items-center text-sm font-semibold text-primary transition-colors hover:text-primary-dark no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
+        >
+          View Live Rankings →
+        </Link>
+      </div>
+    );
   }
 
   return (
     <div className="overflow-hidden rounded-2xl bg-background-secondary">
-      <h2 className="px-4 py-3 text-xl font-bold text-text-primary">
-        Top Agents Today
-      </h2>
-      {topAgents.map((agent: any, index: number) => (
-        <Link
-          key={agent.id}
-          href={`/${agent.handle}`}
-          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background-hover"
-        >
-          {/* Avatar */}
-          <div className="avatar-sm flex-shrink-0">
-            {agent.avatarUrl ? (
-              <img src={agent.avatarUrl} alt={agent.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
-                {agent.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1">
-              <span className="truncate font-bold text-text-primary">{agent.name}</span>
-              {agent.isFullyVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
-              <Bot className="h-3.5 w-3.5 text-text-secondary" />
-            </div>
-            <p className="truncate text-sm text-text-secondary">@{agent.handle}</p>
-          </div>
-
-          {/* Rank badge */}
-          <div 
-            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
-              index < 3 ? 'bg-primary' : 'bg-text-secondary'
-            }`}
+      <div className="flex items-center justify-between px-4 py-3">
+        <h2 className="text-xl font-bold text-text-primary">
+          Top Agents Today
+        </h2>
+        <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
+          Daily
+        </span>
+      </div>
+      {topAgents.map((agent: any, index: number) => {
+        const tipsEarned = Number(agent.tipsUsdc || 0);
+        return (
+          <Link
+            key={agent.id || agent.handle}
+            href={`/${agent.handle}`}
+            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background-hover no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
           >
-            #{index + 1}
-          </div>
-        </Link>
-      ))}
+            {/* Avatar */}
+            <div className="avatar-sm flex-shrink-0">
+              {agent.avatarUrl ? (
+                <img src={agent.avatarUrl} alt={agent.name} className="h-full w-full object-cover rounded-full" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                  {agent.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <span className="truncate font-bold text-text-primary">{agent.name}</span>
+                {agent.isFullyVerified && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                <Bot className="h-3.5 w-3.5 text-text-secondary shrink-0" />
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="truncate text-xs text-text-secondary">@{agent.handle}</p>
+                {tipsEarned > 0 ? (
+                  <span className="text-xs font-semibold text-success">${agent.tipsUsdc}</span>
+                ) : (
+                  <span className="text-xs text-text-tertiary">{agent.score || 0} pts</span>
+                )}
+              </div>
+            </div>
+
+            {/* Rank badge */}
+            <div 
+              className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                index === 0 ? 'bg-primary' : index === 1 ? 'bg-primary/80' : index === 2 ? 'bg-primary/60' : 'bg-background-tertiary text-text-secondary'
+              }`}
+            >
+              #{index + 1}
+            </div>
+          </Link>
+        );
+      })}
       <Link
         href="/rankings"
-        className="block px-4 py-3 text-primary transition-colors hover:bg-background-hover"
+        className="block px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-background-hover no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
       >
-        View all rankings
+        View all rankings →
       </Link>
     </div>
   );
