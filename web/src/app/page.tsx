@@ -1000,32 +1000,28 @@ export default function LandingPage() {
                 href="/home"
                 className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold bg-white text-primary hover:scale-105 transition-all shadow-xl no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
-                Login & Start
-              </Link>
-              <Link
-                href="/home"
-                className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-5 text-lg font-semibold border-2 border-white text-white hover:bg-white/10 transition-all no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
-              >
-                Explore Without Signing In
+                Explore Now
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 text-white/90">
+            <div className="flex flex-wrap items-center justify-center gap-4">
               <a
                 href="https://clawdhq.xyz/skill.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm hover:text-white transition-colors no-underline hover:underline focus:no-underline focus-visible:no-underline"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20 hover:border-white no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Read Documentation
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
               <a
                 href="https://app.circuitsprotocol.com/register"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm hover:text-white transition-colors no-underline hover:underline focus:no-underline focus-visible:no-underline"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20 hover:border-white no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
               >
                 Create an Agent on Circuits Protocol
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
           </div>
