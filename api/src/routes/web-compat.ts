@@ -34,6 +34,7 @@ import {
     walletAddressFromLinkedAccounts,
 } from '../services/privy-auth';
 import { LinkPreviewError, getLinkPreview } from '../services/link-preview';
+import { RankingService } from '../services/ranking';
 
 // Use runtime require so TypeScript does not follow ethers source files during server builds.
 const { Wallet } = require('ethers');
@@ -2642,127 +2643,23 @@ router.post('/claim/:token/verify', async (req: Request, res: Response) => {
 });
 
 router.get('/rankings/agent/:handle', async (req: Request, res: Response) => {
-    const agents = await prisma.agent.findMany({
-        orderBy: [{ currentScore: 'desc' }, { followerCount: 'desc' }],
-    });
-    const index = agents.findIndex((agent) => agent.handle === req.params.handle);
-    if (index === -1) {
+    const agentRank = await RankingService.getAgentRank(req.params.handle, 'alltime');
+    if (!agentRank) {
         return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
     }
-
-    const agent = agents[index];
-    sendData(res, {
-        rank: index + 1,
-        agentId: agent.id,
-        handle: agent.handle,
-        name: agent.name,
-        avatarUrl: agent.avatarUrl,
-        isVerified: agent.isVerified,
-        isFullyVerified: agent.isFullyVerified,
-        score: agent.currentScore,
-        engagements: agent.followerCount + agent.postCount,
-        tipsUsdc: (Number(agent.totalEarnings) / 100).toFixed(2),
-        rankChange: null,
-    });
+    sendData(res, agentRank);
 });
 
 router.get('/rankings/:timeframe', async (req: Request, res: Response) => {
     const requestedLimit = Number(req.query.limit);
-    const take = Number.isFinite(requestedLimit) && requestedLimit > 0
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
         ? Math.min(Math.floor(requestedLimit), 100)
         : 25;
     const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
-    const skip = (page - 1) * take;
+    const timeframe = (req.params.timeframe as any) || 'alltime';
 
-    const timeframe = req.params.timeframe || 'alltime';
-    const now = Date.now();
-
-    let startDate: Date | undefined;
-    if (timeframe === 'daily') {
-        startDate = new Date(now - 24 * 60 * 60 * 1000);
-    } else if (timeframe === 'weekly') {
-        startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
-    }
-
-    const allAgents = await prisma.agent.findMany({
-        include: {
-            tips: startDate ? {
-                where: { createdAt: { gte: startDate } },
-                select: { amountUsd: true },
-            } : {
-                select: { amountUsd: true },
-            },
-            posts: startDate ? {
-                where: { createdAt: { gte: startDate }, isDeleted: false },
-                select: { likeCount: true, replyCount: true, impressionCount: true },
-            } : {
-                where: { isDeleted: false },
-                select: { likeCount: true, replyCount: true, impressionCount: true },
-            },
-        },
-    });
-
-    const scoredAgents = allAgents.map((agent) => {
-        const periodTipsUsd = agent.tips.reduce((acc, t) => acc + Number(t.amountUsd || 0), 0);
-        const periodLikes = agent.posts.reduce((acc, p) => acc + (p.likeCount || 0), 0);
-        const periodReplies = agent.posts.reduce((acc, p) => acc + (p.replyCount || 0), 0);
-        const periodEngagements = periodLikes + periodReplies * 2;
-
-        let computedScore = 0;
-        let tipsUsdc = '0.00';
-        let engagements = 0;
-
-        if (timeframe === 'daily' || timeframe === 'weekly') {
-            const activityScore = (periodTipsUsd * 10) + periodEngagements;
-            computedScore = activityScore > 0 ? activityScore : (agent.currentScore * 0.1);
-            tipsUsdc = periodTipsUsd.toFixed(2);
-            engagements = periodEngagements;
-        } else {
-            const totalEarnedUsd = Number(agent.totalEarnings) / 100;
-            computedScore = agent.currentScore > 0 ? agent.currentScore : (totalEarnedUsd * 5 + agent.followerCount + agent.postCount);
-            tipsUsdc = totalEarnedUsd.toFixed(2);
-            engagements = agent.followerCount + agent.postCount;
-        }
-
-        return {
-            id: agent.id,
-            agentId: agent.id,
-            handle: agent.handle,
-            name: agent.name,
-            bio: agent.bio,
-            avatarUrl: agent.avatarUrl,
-            isVerified: agent.isVerified,
-            isFullyVerified: agent.isFullyVerified,
-            score: Number(computedScore.toFixed(2)),
-            engagements,
-            tipsUsdc,
-            rankChange: null,
-            followerCount: agent.followerCount,
-        };
-    });
-
-    scoredAgents.sort((a, b) => b.score - a.score || b.followerCount - a.followerCount);
-
-    scoredAgents.forEach((agent, idx) => {
-        (agent as any).rank = idx + 1;
-    });
-
-    const total = scoredAgents.length;
-    const paginatedAgents = scoredAgents.slice(skip, skip + take);
-
-    sendData(res, {
-        timeframe,
-        agents: paginatedAgents,
-        rankings: paginatedAgents,
-        pagination: {
-            page,
-            limit: take,
-            total,
-            total_pages: Math.ceil(total / take),
-            has_more: skip + take < total,
-        },
-        updatedAt: new Date().toISOString(),
-    });
+    const rankedData = await RankingService.getRankedAgents(timeframe, { page, limit });
+    sendData(res, rankedData);
 });
 
 router.post('/tips/send', requirePayment((req) => Number(req.body?.amount_usd || 0)), async (req: Request, res: Response) => {

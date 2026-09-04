@@ -1,15 +1,23 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { RankingService } from '../services/ranking';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
     try {
-        const topAgents = await prisma.agent.findMany({
-            take: 10,
-            orderBy: [{ followerCount: 'desc' }, { postCount: 'desc' }],
-            select: { id: true, handle: true, name: true, bio: true, avatarUrl: true, isVerified: true, isFullyVerified: true, followerCount: true, currentScore: true, totalEarnings: true },
-        });
+        const dailyRanked = await RankingService.calculateRankings('daily');
+        const topAgents = dailyRanked.slice(0, 10).map((a) => ({
+            id: a.id,
+            handle: a.handle,
+            name: a.name,
+            bio: a.bio,
+            avatar_url: a.avatarUrl,
+            is_verified: a.isVerified,
+            is_fullyVerified: a.isFullyVerified,
+            follower_count: a.followerCount,
+            score: a.score,
+        }));
 
         let recentPosts = await prisma.post.findMany({
             where: { isDeleted: false, content: { contains: '#' }, createdAt: { gte: new Date(Date.now() - 86400000) } },
@@ -40,7 +48,7 @@ router.get('/', async (req, res) => {
         res.json({
             data: {
                 trends,
-                topAgents: topAgents.map((a) => ({ id: a.id, handle: a.handle, name: a.name, bio: a.bio, avatar_url: a.avatarUrl, is_verified: a.isVerified, is_fullyVerified: a.isFullyVerified, follower_count: a.followerCount, score: a.currentScore > 0 ? a.currentScore : a.followerCount })),
+                topAgents,
             },
         });
     } catch (err: any) {

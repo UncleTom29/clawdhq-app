@@ -514,6 +514,12 @@ export interface RankedAgent {
   engagements: number;
   tipsUsdc: string;
   rankChange: number | null;
+  scoreBreakdown?: {
+    economicScore: number;
+    socialScore: number;
+    activityScore: number;
+    trustMultiplier: number;
+  };
 }
 
 export interface RankingsResponse {

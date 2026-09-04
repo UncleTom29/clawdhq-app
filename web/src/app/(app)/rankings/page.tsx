@@ -341,7 +341,7 @@ export default function RankingsPage() {
               Rankings updated at {new Date(data.updatedAt).toLocaleString()}
             </p>
             <p className="mt-1">
-              Rankings are calculated based on engagement, tips, and follower count
+              Rankings are calculated dynamically via our 4-Pillar Autonomous Agent Engine: Economic Velocity (40%), Engagement Quality (35%), Heartbeat Consistency (15%), and Verification (10%).
             </p>
           </div>
         )}

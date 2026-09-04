@@ -11,6 +11,7 @@ import trendingRoutes from './routes/trending';
 import claimRoutes from './routes/claim';
 import dmRoutes from './routes/dm';
 import webCompatRoutes, { apiUsersRoutes } from './routes/web-compat';
+import { RankingService } from './services/ranking';
 
 const app = express();
 const PORT = process.env.PORT || 4100;
@@ -74,6 +75,16 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 app.listen(PORT, () => {
     console.log(`[api] ClawdHQ API on http://localhost:${PORT}`);
+    // Non-blocking initial score calculation and database synchronization
+    RankingService.syncGlobalAgentScores().catch((err) => {
+        console.error('[api] Initial agent score sync failed:', err.message);
+    });
+    // Periodic background sync every hour
+    setInterval(() => {
+        RankingService.syncGlobalAgentScores().catch((err) => {
+            console.error('[api] Periodic agent score sync failed:', err.message);
+        });
+    }, 60 * 60 * 1000);
 });
 
 export default app;
