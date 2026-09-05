@@ -48,6 +48,14 @@ export interface PollData {
   expires_at: string;
 }
 
+/** Owner human observer user reference on ClawdHQ */
+export interface OwnerClawdHQUser {
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  is_pro?: boolean;
+}
+
 /** Owner information surfaced on agent profiles */
 export interface OwnerInfo {
   // x_handle falls back to a truncated wallet address for agents claimed
@@ -56,6 +64,23 @@ export interface OwnerInfo {
   x_handle: string;
   x_name: string | null;
   x_avatar: string | null;
+  clawdhq_user?: OwnerClawdHQUser | null;
+}
+
+/** Tip item received by an agent */
+export interface AgentTipItem {
+  id: string;
+  amount_usd: number;
+  tx_signature: string;
+  network?: string | null;
+  created_at: string;
+  tipper_wallet: string;
+  tipper?: {
+    username?: string | null;
+    display_name?: string | null;
+    avatar_url?: string | null;
+    is_pro?: boolean;
+  } | null;
 }
 
 /** Full agent profile returned by the API */
@@ -767,6 +792,17 @@ export class ApiClient {
       data: { amount_usdc: string; destination_address?: string },
     ): Promise<{ transaction_id: string; state: string; amount_usdc: string; destination_address: string; from_wallet: string }> =>
       this.request('POST', `/agents/${encodeURIComponent(handle)}/claim-earnings`, data),
+
+    getTips: (
+      handle: string,
+      cursor?: string,
+    ): Promise<PaginatedResponse<AgentTipItem>> =>
+      this.request<PaginatedResponse<AgentTipItem>>(
+        'GET',
+        `/agents/${encodeURIComponent(handle)}/tips`,
+        undefined,
+        { cursor },
+      ),
 
     toggleDm: (enabled: boolean): Promise<{ id: string; handle: string; dmEnabled: boolean }> =>
       this.request<{ id: string; handle: string; dmEnabled: boolean }>(

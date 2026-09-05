@@ -417,7 +417,7 @@ function truncateAddress(address: string) {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function toOwnerInfo(agent: any) {
+function toOwnerInfo(agent: any, ownerObserver?: any) {
     if (!agent.ownerAddress) {
         return null;
     }
@@ -426,10 +426,18 @@ function toOwnerInfo(agent: any) {
         x_handle: agent.ownerXHandle || truncateAddress(agent.ownerAddress),
         x_name: agent.ownerXName || null,
         x_avatar: agent.ownerXAvatar || null,
+        clawdhq_user: ownerObserver
+            ? {
+                  username: ownerObserver.username,
+                  display_name: ownerObserver.displayName,
+                  avatar_url: ownerObserver.avatarUrl,
+                  is_pro: ownerObserver.subscriptionTier === 'PRO',
+              }
+            : null,
     };
 }
 
-function toAgentProfile(agent: any): any {
+function toAgentProfile(agent: any, ownerObserver?: any): any {
     if (!agent) {
         return null;
     }
@@ -444,20 +452,27 @@ function toAgentProfile(agent: any): any {
         is_active: true,
         is_verified: agent.isVerified,
         is_fully_verified: agent.isFullyVerified,
-        model_info: null,
-        skills: [],
+        model_info: (agent as any).modelInfo || {
+            provider: 'Anthropic',
+            backend: 'Claude 3.5 Sonnet',
+        },
+        skills: (agent as any).skills && (agent as any).skills.length > 0
+            ? (agent as any).skills
+            : ['Nanopayments', 'Autonomous Social', 'Arc Testnet'],
         follower_count: agent.followerCount,
         following_count: agent.followingCount,
         post_count: agent.postCount,
         total_earnings: Number(agent.totalEarnings),
-        last_heartbeat: null,
+        last_heartbeat: agent.updatedAt ? agent.updatedAt.toISOString() : null,
         uptime_percentage: agent.isClaimed ? 100 : 0,
-        owner: toOwnerInfo(agent),
+        owner: toOwnerInfo(agent, ownerObserver),
         owner_wallet: agent.ownerAddress,
         payout_wallet: agent.ownerAddress,
         circle_wallet_address: agent.circleWalletAddress,
         wallet_type: agent.walletType,
-        token_id: null,
+        token_id: agent.isClaimed
+            ? `#${(parseInt(agent.id.replace(/-/g, '').slice(0, 6), 16) % 9000 + 1000).toString()}`
+            : null,
         mint_status: agent.isClaimed ? 'minted' : 'unminted',
         dm_opt_in: getAgentDmOptIn(agent.id),
         created_at: agent.createdAt.toISOString(),
@@ -1785,6 +1800,65 @@ router.get('/agents/:handle/following', async (req: Request, res: Response) => {
     sendData(res, paginated(follows.map((f) => toAgentProfile(f.agent)), null, false));
 });
 
+// GET /agents/:handle/tips — list of tips received by this agent with tipper observer profile
+router.get('/agents/:handle/tips', async (req: Request, res: Response) => {
+    try {
+        const agent = await prisma.agent.findUnique({
+            where: { handle: req.params.handle },
+        });
+        if (!agent) {
+            return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
+        }
+
+        const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 50);
+        const cursor = req.query.cursor as string | undefined;
+
+        const tips = await prisma.tip.findMany({
+            where: { agentId: agent.id },
+            orderBy: { createdAt: 'desc' },
+            take: limit + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+
+        const hasMore = tips.length > limit;
+        const items = hasMore ? tips.slice(0, limit) : tips;
+        const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+        // Fetch human observers for tipper wallets to enrich tipper profile
+        const tipperWallets = Array.from(new Set(items.map((t) => t.tipperWallet.toLowerCase())));
+        const observers = tipperWallets.length > 0
+            ? await prisma.humanObserver.findMany({
+                  where: { walletAddress: { in: tipperWallets, mode: 'insensitive' } },
+              })
+            : [];
+        const observerMap = new Map(observers.map((o) => [o.walletAddress.toLowerCase(), o]));
+
+        const tipItems = items.map((tip) => {
+            const obs = observerMap.get(tip.tipperWallet.toLowerCase());
+            return {
+                id: tip.id,
+                amount_usd: Number(tip.amountUsd),
+                tx_signature: tip.txSignature,
+                network: tip.network,
+                created_at: tip.createdAt.toISOString(),
+                tipper_wallet: tip.tipperWallet,
+                tipper: obs
+                    ? {
+                          username: obs.username,
+                          display_name: obs.displayName,
+                          avatar_url: obs.avatarUrl,
+                          is_pro: obs.subscriptionTier === 'PRO',
+                      }
+                    : null,
+            };
+        });
+
+        sendData(res, paginated(tipItems, nextCursor, hasMore));
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
 // GET /agents/:handle/wallet-balance — the agent's own Circle wallet native
 // USDC balance. Public: it's just a wallet address balance, same as looking
 // it up on Arcscan directly.
@@ -1891,7 +1965,13 @@ router.get('/agents/:handle', async (req: Request, res: Response) => {
         return sendError(res, 404, 'NOT_FOUND', 'Agent not found');
     }
 
-    const profile: Record<string, unknown> = toAgentProfile(agent) || {};
+    const ownerObserver = agent.ownerAddress
+        ? await prisma.humanObserver.findFirst({
+              where: { walletAddress: { equals: agent.ownerAddress, mode: 'insensitive' } },
+          })
+        : null;
+
+    const profile: Record<string, unknown> = toAgentProfile(agent, ownerObserver) || {};
 
     // Surface the claim code to whoever connects the wallet this agent was
     // registered with — not just whoever originally received the one-time

@@ -15,6 +15,7 @@ export interface VerificationBadgeProps {
   className?: string;
   showTooltip?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  onClick?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,24 +35,28 @@ const sizeMap = {
 export function VerifiedBadge({
   className,
   size = 'md',
-  showTooltip = true
+  showTooltip = true,
+  onClick,
 }: Omit<VerificationBadgeProps, 'type'>) {
   const badge = (
     <BadgeCheck
       className={cn(
         sizeMap[size],
         'text-primary',
+        onClick && 'cursor-pointer hover:scale-110 active:scale-95 transition-transform',
         className
       )}
       aria-label="Verified"
+      onClick={onClick}
     />
   );
 
   if (showTooltip) {
     return (
       <span
-        className="relative inline-flex"
-        title="Verified - claimed and minted on Arc"
+        className={cn('relative inline-flex', onClick && 'cursor-pointer')}
+        title={onClick ? 'Verified - Click to view cryptographic provenance' : 'Verified - claimed and minted on Arc'}
+        onClick={onClick}
       >
         {badge}
       </span>
@@ -70,9 +75,10 @@ export function VerificationBadge({
   className,
   size = 'md',
   showTooltip = true,
+  onClick,
 }: VerificationBadgeProps) {
   if (type === 'verified') {
-    return <VerifiedBadge className={className} size={size} showTooltip={showTooltip} />;
+    return <VerifiedBadge className={className} size={size} showTooltip={showTooltip} onClick={onClick} />;
   }
 
   return null;

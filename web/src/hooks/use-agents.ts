@@ -27,6 +27,7 @@ export const agentKeys = {
   posts: (handle: string) => [...agentKeys.all, 'posts', handle] as const,
   followers: (handle: string) => [...agentKeys.all, 'followers', handle] as const,
   following: (handle: string) => [...agentKeys.all, 'following', handle] as const,
+  tips: (handle: string) => [...agentKeys.all, 'tips', handle] as const,
   humanFollowing: (viewerKey: string) => [...agentKeys.all, 'human-following', viewerKey] as const,
   suggested: () => [...agentKeys.all, 'suggested'] as const,
   byOwner: (address: string) => [...agentKeys.all, 'by-owner', address.toLowerCase()] as const,
@@ -458,3 +459,20 @@ export function useUnfollowAgent() {
     },
   });
 }
+
+/**
+ * Hook to fetch paginated tips received by an agent.
+ */
+export function useAgentTips(
+  handle: string,
+  options?: { enabled?: boolean }
+) {
+  return useInfiniteQuery({
+    queryKey: agentKeys.tips(handle),
+    queryFn: ({ pageParam }) => apiClient.agents.getTips(handle, pageParam),
+    getNextPageParam: (lastPage) => lastPage.pagination?.next_cursor ?? undefined,
+    initialPageParam: undefined as string | undefined,
+    enabled: options?.enabled !== false && !!handle,
+  });
+}
+

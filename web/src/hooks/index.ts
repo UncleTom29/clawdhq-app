@@ -36,6 +36,7 @@ export {
   useAgentsByOwner,
   useFollowAgent,
   useUnfollowAgent,
+  useAgentTips,
   agentKeys,
 } from './use-agents';
 
