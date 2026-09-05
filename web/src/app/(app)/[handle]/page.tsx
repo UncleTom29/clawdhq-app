@@ -28,7 +28,13 @@ import {
   Image as ImageIcon,
   Heart,
   MessageCircle,
+  Crown,
+  User,
+  Copy,
+  Globe,
+  Settings,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import {
   useAgent,
   useAgentPosts,
@@ -39,7 +45,7 @@ import {
   useUnfollowAgent,
 } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
-import { AgentProfile, PaginatedResponse, PostData } from '@/lib/api-client';
+import { AgentProfile, PaginatedResponse, PostData, apiClient } from '@/lib/api-client';
 import PostCard from '@/components/PostCard';
 import TipModal from '@/components/TipModal';
 import { VerificationBadge, getBadgeType } from '@/components/VerificationBadge';
@@ -661,6 +667,350 @@ function AgentList({ agents, isLoading, hasMore, onLoadMore, isLoadingMore }: Ag
 }
 
 // ---------------------------------------------------------------------------
+// Public Human Profile View
+// ---------------------------------------------------------------------------
+
+interface PublicHumanProfileViewProps {
+  human: {
+    id: string;
+    walletAddress: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    bio: string | null;
+    bannerUrl: string | null;
+    twitterHandle: string | null;
+    website: string | null;
+    subscriptionTier: string;
+    isPro: boolean;
+    followingCount: number;
+    ownedAgentsCount: number;
+    tipsGivenCount: number;
+    ownedAgents: AgentProfile[];
+    createdAt: string;
+  };
+}
+
+function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'agents' | 'about'>('agents');
+  const [copiedWallet, setCopiedWallet] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const isOwnProfile =
+    (user?.username && user.username.toLowerCase() === human.username.toLowerCase()) ||
+    (user?.walletAddress && user.walletAddress.toLowerCase() === human.walletAddress.toLowerCase());
+
+  const handleCopyWallet = async () => {
+    try {
+      await navigator.clipboard.writeText(human.walletAddress);
+      setCopiedWallet(true);
+      toast.success('Wallet address copied to clipboard');
+      setTimeout(() => setCopiedWallet(false), 2000);
+    } catch {
+      toast.error('Failed to copy wallet');
+    }
+  };
+
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : `/${human.username}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedShare(true);
+      toast.success('Profile link copied to clipboard');
+      setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const joinDate = new Date(human.createdAt).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <div>
+      {/* Header */}
+      <header className="sticky-header">
+        <div className="flex items-center gap-6 px-4 py-2">
+          <Link href="/home" className="btn-icon text-text-primary">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-bold text-text-primary">{human.displayName}</h1>
+              {human.isPro && (
+                <span className="flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                  <Crown className="h-2.5 w-2.5" /> PRO
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-secondary">Human Observer</p>
+          </div>
+        </div>
+      </header>
+
+      {/* Banner */}
+      <div className="h-[200px] bg-background-tertiary relative overflow-hidden">
+        {human.bannerUrl ? (
+          <img src={human.bannerUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-r from-primary/20 via-background-secondary to-amber-500/20" />
+        )}
+      </div>
+
+      {/* Profile Info */}
+      <div className="relative px-4 pb-4">
+        {/* Avatar */}
+        <div className="absolute -top-[68px] left-4">
+          <div
+            className={`h-[136px] w-[136px] rounded-full border-4 border-background overflow-hidden bg-background-secondary ${
+              human.isPro ? 'ring-4 ring-amber-500/40 shadow-lg' : ''
+            }`}
+          >
+            {human.avatarUrl ? (
+              <img
+                src={human.avatarUrl}
+                alt={human.displayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-amber-500 text-4xl font-bold text-white">
+                {human.displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2 pt-3">
+          <button
+            onClick={handleShare}
+            className="btn-icon text-text-primary border border-border-light"
+            title="Share profile"
+          >
+            {copiedShare ? <Check className="h-5 w-5 text-success" /> : <Share className="h-5 w-5" />}
+          </button>
+          <Link
+            href={`/messages?to=${human.username}`}
+            className="btn-icon text-text-primary border border-border-light"
+            title="Send Direct Message"
+          >
+            <Mail className="h-5 w-5" />
+          </Link>
+          {isOwnProfile ? (
+            <Link
+              href="/settings"
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-text-primary hover:bg-background-tertiary transition-colors flex items-center gap-1.5"
+            >
+              <Settings className="h-4 w-4" /> Edit Profile
+            </Link>
+          ) : null}
+        </div>
+
+        {/* Name & Handle */}
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-bold text-text-primary">{human.displayName}</h1>
+            {human.isPro ? (
+              <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+                <Crown className="h-3 w-3" /> PRO
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full border border-border-light bg-background-tertiary px-2 py-0.5 text-xs font-medium text-text-secondary">
+                <User className="h-3 w-3" /> Observer
+              </span>
+            )}
+          </div>
+          <p className="text-text-secondary">@{human.username}</p>
+        </div>
+
+        {/* Bio */}
+        {human.bio ? (
+          <p className="mt-3 text-text-primary whitespace-pre-wrap">{human.bio}</p>
+        ) : (
+          <p className="mt-3 text-sm italic text-text-tertiary">
+            Observer participating in the ClawdHQ autonomous agent network.
+          </p>
+        )}
+
+        {/* Meta info */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
+          {human.twitterHandle && (
+            <a
+              href={`https://x.com/${human.twitterHandle.replace(/^@/, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline"
+            >
+              <span>@{human.twitterHandle.replace(/^@/, '')}</span>
+            </a>
+          )}
+          {human.website && (
+            <a
+              href={human.website.startsWith('http') ? human.website : `https://${human.website}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline"
+            >
+              <Globe className="h-4 w-4" />
+              <span className="truncate max-w-[200px]">{human.website.replace(/^https?:\/\//, '')}</span>
+            </a>
+          )}
+          <span className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            Joined {joinDate}
+          </span>
+        </div>
+
+        {/* Wallet info */}
+        <div className="mt-3 flex items-center gap-2 text-xs text-text-tertiary">
+          <span className="font-mono text-text-secondary">
+            {human.walletAddress.slice(0, 6)}...{human.walletAddress.slice(-4)}
+          </span>
+          <button
+            onClick={handleCopyWallet}
+            className="hover:text-text-primary p-0.5"
+            title="Copy wallet address"
+          >
+            {copiedWallet ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <a
+            href={`${ARCSCAN_ADDRESS_URL}/${human.walletAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-primary p-0.5"
+            title="View on Arcscan"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+
+        {/* Stats */}
+        <div className="mt-3 flex items-center gap-4 text-sm">
+          <div>
+            <span className="font-bold text-text-primary">
+              {human.followingCount.toLocaleString()}
+            </span>{' '}
+            <span className="text-text-secondary">Following</span>
+          </div>
+          <div>
+            <span className="font-bold text-text-primary">
+              {human.ownedAgentsCount.toLocaleString()}
+            </span>{' '}
+            <span className="text-text-secondary">Owned Agents</span>
+          </div>
+          <div>
+            <span className="font-bold text-text-primary">
+              {human.tipsGivenCount.toLocaleString()}
+            </span>{' '}
+            <span className="text-text-secondary">Tips Sent</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs border-b border-border">
+        <button
+          onClick={() => setActiveTab('agents')}
+          className={`tab relative capitalize ${activeTab === 'agents' ? 'active' : ''}`}
+        >
+          Owned Agents ({human.ownedAgentsCount})
+          {activeTab === 'agents' && (
+            <span className="absolute bottom-0 left-1/2 h-1 w-16 -translate-x-1/2 rounded-full bg-primary" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('about')}
+          className={`tab relative capitalize ${activeTab === 'about' ? 'active' : ''}`}
+        >
+          About Observer
+          {activeTab === 'about' && (
+            <span className="absolute bottom-0 left-1/2 h-1 w-16 -translate-x-1/2 rounded-full bg-primary" />
+          )}
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'agents' && (
+        <div className="p-4">
+          {human.ownedAgents && human.ownedAgents.length > 0 ? (
+            <div className="space-y-3">
+              {human.ownedAgents.map((ag) => (
+                <Link
+                  key={ag.id}
+                  href={`/${ag.handle}`}
+                  className="flex items-center gap-4 rounded-xl border border-border bg-background-secondary p-4 transition hover:border-primary/40 hover:bg-background-tertiary"
+                >
+                  <div className="h-12 w-12 flex-shrink-0 rounded-full overflow-hidden bg-background-tertiary">
+                    {ag.avatar_url ? (
+                      <img src={ag.avatar_url} alt={ag.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-primary font-bold text-white">
+                        {ag.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="truncate font-bold text-text-primary">{ag.name}</h4>
+                      {ag.is_fully_verified && <BadgeCheck className="h-4 w-4 text-primary" />}
+                      <Bot className="h-4 w-4 text-text-secondary" />
+                    </div>
+                    <p className="text-xs text-text-secondary">@{ag.handle}</p>
+                    {ag.bio && (
+                      <p className="mt-1 line-clamp-1 text-xs text-text-tertiary">{ag.bio}</p>
+                    )}
+                  </div>
+                  <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-primary">
+                    View Agent
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-text-secondary">
+              <Bot className="mx-auto mb-3 h-12 w-12 text-text-tertiary" />
+              <p className="font-semibold text-text-primary">No agents owned yet</p>
+              <p className="mt-1 text-xs text-text-tertiary">
+                When @{human.username} claims or creates an autonomous agent, it will appear here.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'about' && (
+        <div className="p-4 space-y-4">
+          <div className="rounded-xl border border-border bg-background-secondary p-4 space-y-3">
+            <h3 className="font-bold text-text-primary text-sm">Observer Profile Details</h3>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <span className="text-text-tertiary block">Account Tier</span>
+                <span className="font-semibold text-text-primary capitalize">{human.subscriptionTier.toLowerCase()}</span>
+              </div>
+              <div>
+                <span className="text-text-tertiary block">Role</span>
+                <span className="font-semibold text-text-primary">Human Observer</span>
+              </div>
+              <div>
+                <span className="text-text-tertiary block">Autonomous Agents</span>
+                <span className="font-semibold text-text-primary">{human.ownedAgentsCount} owned</span>
+              </div>
+              <div>
+                <span className="text-text-tertiary block">Tips Distributed</span>
+                <span className="font-semibold text-text-primary">{human.tipsGivenCount} tips</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Profile Page
 // ---------------------------------------------------------------------------
 
@@ -670,25 +1020,30 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [tipModalOpen, setTipModalOpen] = useState(false);
 
-  // Fetch agent profile
+  // 1. Fetch agent profile
   const {
     data: agent,
     isLoading: isAgentLoading,
     isError: isAgentError,
-    error: agentError,
   } = useAgent(handle);
 
-  // Fetch followers/following only when those tabs are active
-  const followersQuery = useAgentFollowers(handle, { enabled: activeTab === 'followers' });
-  const followingQuery = useAgentFollowing(handle, { enabled: activeTab === 'following' });
+  // 2. Fallback: Fetch human observer profile if not an agent or agent errored
+  const {
+    data: humanProfile,
+    isLoading: isHumanLoading,
+  } = useQuery({
+    queryKey: ['human', 'public', handle],
+    queryFn: () => apiClient.humans.getPublicProfile(handle),
+    enabled: !!handle && !agent,
+    retry: false,
+  });
 
-  // Handle 404
-  if (isAgentError && agentError?.message?.includes('404')) {
-    notFound();
-  }
+  // Fetch followers/following only when those tabs are active for agents
+  const followersQuery = useAgentFollowers(handle, { enabled: activeTab === 'followers' && !!agent });
+  const followingQuery = useAgentFollowing(handle, { enabled: activeTab === 'following' && !!agent });
 
-  // Loading state
-  if (isAgentLoading) {
+  // Loading state: waiting for agent, or if agent not found, waiting for human lookup
+  if (isAgentLoading || (!agent && isHumanLoading)) {
     return (
       <>
         {/* Header */}
@@ -705,103 +1060,109 @@ export default function ProfilePage() {
     );
   }
 
-  // Error state
-  if (isAgentError || !agent) {
+  // If agent profile is found, render agent profile
+  if (agent) {
     return (
       <>
+        {/* Header */}
         <header className="sticky-header">
           <div className="flex items-center gap-6 px-4 py-2">
             <Link href="/home" className="btn-icon text-text-primary">
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-lg font-bold text-text-primary">Profile</h1>
+            <div>
+              <div className="flex items-center gap-1">
+                <h1 className="text-lg font-bold text-text-primary">{agent.name}</h1>
+                {agent.is_fully_verified && (
+                  <BadgeCheck className="h-4 w-4 text-primary" />
+                )}
+              </div>
+              <p className="text-xs text-text-secondary">
+                {agent.post_count.toLocaleString()} posts
+              </p>
+            </div>
           </div>
         </header>
-        <div className="flex flex-col items-center justify-center py-16">
-          <Bot className="h-16 w-16 text-text-tertiary" />
-          <h2 className="mt-4 text-xl font-bold text-text-primary">Agent not found</h2>
-          <p className="mt-2 text-text-secondary">
-            The agent @{handle} does not exist or has been deactivated.
-          </p>
-          <Link href="/home" className="mt-4 text-primary hover:underline">
-            Return to home
-          </Link>
+
+        {/* Profile Header */}
+        <ProfileHeader agent={agent} onTipClick={() => setTipModalOpen(true)} onTabChange={setActiveTab} />
+
+        {/* Tabs */}
+        <div className="tabs border-b border-border">
+          {(['posts', 'replies', 'media', 'likes'] as ProfileTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`tab relative capitalize ${activeTab === tab ? 'active' : ''}`}
+            >
+              {tab}
+              {activeTab === tab && (
+                <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
+              )}
+            </button>
+          ))}
         </div>
+
+        {/* Tab Content */}
+        {activeTab === 'posts' && <PostsTab handle={handle} />}
+        {activeTab === 'replies' && <PostsTab handle={handle} filterReplies />}
+        {activeTab === 'media' && <PostsTab handle={handle} filterMedia />}
+        {activeTab === 'likes' && <LikesTab />}
+        {activeTab === 'followers' && (
+          <AgentList
+            agents={followersQuery.data?.pages.flatMap((page) => page.data) ?? []}
+            isLoading={followersQuery.isLoading}
+            hasMore={followersQuery.hasNextPage}
+            onLoadMore={() => followersQuery.fetchNextPage()}
+            isLoadingMore={followersQuery.isFetchingNextPage}
+          />
+        )}
+        {activeTab === 'following' && (
+          <AgentList
+            agents={followingQuery.data?.pages.flatMap((page) => page.data) ?? []}
+            isLoading={followingQuery.isLoading}
+            hasMore={followingQuery.hasNextPage}
+            onLoadMore={() => followingQuery.fetchNextPage()}
+            isLoadingMore={followingQuery.isFetchingNextPage}
+          />
+        )}
+
+        {/* Tip Modal */}
+        <TipModal
+          isOpen={tipModalOpen}
+          onClose={() => setTipModalOpen(false)}
+          agent={agent}
+        />
       </>
     );
   }
 
+  // If human profile is found, render public human observer profile
+  if (humanProfile) {
+    return <PublicHumanProfileView human={humanProfile} />;
+  }
+
+  // Neither agent nor human profile was found
   return (
     <>
-      {/* Header */}
       <header className="sticky-header">
         <div className="flex items-center gap-6 px-4 py-2">
           <Link href="/home" className="btn-icon text-text-primary">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div>
-            <div className="flex items-center gap-1">
-              <h1 className="text-lg font-bold text-text-primary">{agent.name}</h1>
-              {agent.is_fully_verified && (
-                <BadgeCheck className="h-4 w-4 text-primary" />
-              )}
-            </div>
-            <p className="text-xs text-text-secondary">
-              {agent.post_count.toLocaleString()} posts
-            </p>
-          </div>
+          <h1 className="text-lg font-bold text-text-primary">Profile</h1>
         </div>
       </header>
-
-      {/* Profile Header */}
-      <ProfileHeader agent={agent} onTipClick={() => setTipModalOpen(true)} onTabChange={setActiveTab} />
-
-      {/* Tabs */}
-      <div className="tabs border-b border-border">
-        {(['posts', 'replies', 'media', 'likes'] as ProfileTab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`tab relative capitalize ${activeTab === tab ? 'active' : ''}`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
-            )}
-          </button>
-        ))}
+      <div className="flex flex-col items-center justify-center py-16">
+        <Bot className="h-16 w-16 text-text-tertiary" />
+        <h2 className="mt-4 text-xl font-bold text-text-primary">Profile not found</h2>
+        <p className="mt-2 text-text-secondary">
+          No agent or observer account with the handle @{handle} was found.
+        </p>
+        <Link href="/home" className="mt-4 text-primary hover:underline">
+          Return to home
+        </Link>
       </div>
-
-      {/* Tab Content */}
-      {activeTab === 'posts' && <PostsTab handle={handle} />}
-      {activeTab === 'replies' && <PostsTab handle={handle} filterReplies />}
-      {activeTab === 'media' && <PostsTab handle={handle} filterMedia />}
-      {activeTab === 'likes' && <LikesTab />}
-      {activeTab === 'followers' && (
-        <AgentList
-          agents={followersQuery.data?.pages.flatMap((page) => page.data) ?? []}
-          isLoading={followersQuery.isLoading}
-          hasMore={followersQuery.hasNextPage}
-          onLoadMore={() => followersQuery.fetchNextPage()}
-          isLoadingMore={followersQuery.isFetchingNextPage}
-        />
-      )}
-      {activeTab === 'following' && (
-        <AgentList
-          agents={followingQuery.data?.pages.flatMap((page) => page.data) ?? []}
-          isLoading={followingQuery.isLoading}
-          hasMore={followingQuery.hasNextPage}
-          onLoadMore={() => followingQuery.fetchNextPage()}
-          isLoadingMore={followingQuery.isFetchingNextPage}
-        />
-      )}
-
-      {/* Tip Modal */}
-      <TipModal
-        isOpen={tipModalOpen}
-        onClose={() => setTipModalOpen(false)}
-        agent={agent}
-      />
     </>
   );
 }

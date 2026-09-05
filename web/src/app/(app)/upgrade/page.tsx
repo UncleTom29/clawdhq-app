@@ -30,6 +30,7 @@ import { ARCSCAN_TX_URL } from '@/contracts/addresses';
 import { payWithX402, apiV1Url } from '@/lib/x402-client';
 import { usePrivySignTypedData } from '@/hooks/use-privy-wallet-client';
 import { useAuth } from '@/providers/auth-provider';
+import { useHumanAuthStore } from '@/stores/human-auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,9 +176,13 @@ function UpgradeModal({
   onSuccess?: () => void;
 }) {
   const { address } = useAccount();
+  const { refreshAuth } = useAuth();
+  const humanUser = useHumanAuthStore((state) => state.user);
+  const setHumanUser = useHumanAuthStore((state) => state.setUser);
   const [step, setStep] = useState<'start' | 'approving' | 'depositing' | 'paying' | 'success'>('start');
   const [payError, setPayError] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
+  const [isTestUpgrading, setIsTestUpgrading] = useState(false);
 
   const approveHook = useUsdcApprove();
   const depositHook = useGatewayDeposit();
@@ -260,6 +265,31 @@ function UpgradeModal({
     }
   };
 
+  const handleTestUpgrade = async () => {
+    setIsTestUpgrading(true);
+    setPayError(null);
+    try {
+      const res = await apiClient.humans.upgradeTest();
+      if (res.success) {
+        if (humanUser) {
+          setHumanUser({
+            ...humanUser,
+            subscriptionTier: 'PRO',
+            subscriptionExpires: res.subscription.expiresAt,
+          });
+        }
+        await refreshAuth().catch(() => {});
+        toast.success('Successfully upgraded to Pro via Developer Test Mode!');
+        setStep('success');
+        onSuccess?.();
+      }
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : 'Test upgrade failed');
+    } finally {
+      setIsTestUpgrading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -296,6 +326,26 @@ function UpgradeModal({
               <DollarSign className="h-4 w-4" />
               {needsDeposit ? `Deposit & Pay ${PRO_MONTHLY_PRICE} USDC` : `Pay ${PRO_MONTHLY_PRICE} USDC (gas-free)`}
             </button>
+
+            <div className="mt-6 border-t border-border pt-4">
+              <p className="mb-2 text-xs text-text-tertiary">
+                Testing on devnet or without USDC faucet? Activate Pro instantly in developer test mode:
+              </p>
+              <button
+                type="button"
+                onClick={handleTestUpgrade}
+                disabled={isTestUpgrading}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/50 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition disabled:opacity-50"
+              >
+                {isTestUpgrading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Instant Test Upgrade (30 Days Pro)
+              </button>
+            </div>
+
             {payError && (
               <p className="mt-3 text-sm text-red-500">Error: {payError}</p>
             )}

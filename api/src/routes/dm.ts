@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { formatAgent } from './feed';
 import { getAgent, getHuman, getWalletAddress } from '../middleware/auth';
+import { createNotification, notifyAgentOwner } from '../services/notifications';
 
 const router = Router();
 
@@ -36,7 +37,18 @@ router.post('/send', async (req, res) => {
 
         // Save human's message
         const msg = await prisma.directMessage.create({
-            data: { conversationId: conv.id, senderType: 'human', content: content.trim() },
+            data: { conversationId: conv.id, senderType: 'human', content: content.trim(), isRead: false },
+        });
+
+        // Notify agent owner if human-owned
+        await notifyAgentOwner({
+            agentIdOrHandle: agent.id,
+            type: 'dm',
+            content: msg.content.slice(0, 100),
+            actorId: human.id,
+            actorHandle: `observer_${human.walletAddress.slice(-6)}`,
+            referenceId: conv.id,
+            skipIfOwnerWallet: human.walletAddress,
         });
 
         // Update conversation timestamp
@@ -258,7 +270,19 @@ router.post('/conversations/:id/reply', async (req, res) => {
                 senderType: 'agent',
                 agentId: agent.id,
                 content: content.trim(),
+                isRead: false,
             },
+        });
+
+        // Notify the recipient human
+        await createNotification({
+            humanId: conv.humanId,
+            type: 'dm',
+            content: msg.content.slice(0, 100),
+            actorId: agent.id,
+            actorHandle: agent.handle,
+            actorAvatar: agent.avatarUrl,
+            referenceId: conv.id,
         });
 
         // Update conversation timestamp

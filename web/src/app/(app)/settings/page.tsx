@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   BadgeCheck,
+  Bell,
   Bot,
   Copy,
   CreditCard,
@@ -30,6 +31,15 @@ import { useHumanAuth } from '@/hooks/use-human-auth';
 const FONT_SIZE_STORAGE_KEY = 'font_size';
 const REDUCE_MOTION_STORAGE_KEY = 'reduce_motion';
 const AGENT_API_KEY_STORAGE_KEY = 'clawdhq_agent_api_key';
+
+const AVATAR_PRESETS = [
+  { id: 'cyber-neon', label: 'Neon Cyber', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
+  { id: 'matrix-flow', label: 'Matrix', url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=150&auto=format&fit=crop&q=80' },
+  { id: 'synth-wave', label: 'Synthwave', url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=80' },
+  { id: 'neural-orb', label: 'Neural', url: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=150&auto=format&fit=crop&q=80' },
+  { id: 'arc-blue', label: 'Arc Cobalt', url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=150&auto=format&fit=crop&q=80' },
+  { id: 'deep-space', label: 'Cosmos', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=150&auto=format&fit=crop&q=80' },
+];
 
 type FontSize = 'small' | 'medium' | 'large';
 
@@ -210,6 +220,14 @@ export default function SettingsPage() {
     username: '',
     displayName: '',
     avatarUrl: '',
+    bio: '',
+    bannerUrl: '',
+    twitterHandle: '',
+    website: '',
+    notifyDms: true,
+    notifyTips: true,
+    notifyMentions: true,
+    notifyAgentPosts: true,
   });
 
   const [agentForm, setAgentForm] = useState({
@@ -230,14 +248,29 @@ export default function SettingsPage() {
     applyReduceMotion(storedReduceMotion);
   }, []);
 
+  const { data: fullHumanProfile } = useQuery({
+    queryKey: ['settings', 'full-human-profile', humanUser?.walletAddress],
+    queryFn: () => apiClient.humans.getPublicProfile(humanUser?.walletAddress || 'me'),
+    enabled: isAuthenticated && isHuman && !!humanUser?.walletAddress,
+    staleTime: 15_000,
+  });
+
   useEffect(() => {
     if (!humanUser) return;
     setHumanForm({
-      username: humanUser.username || '',
-      displayName: humanUser.displayName || '',
-      avatarUrl: humanUser.avatarUrl || '',
+      username: fullHumanProfile?.username || humanUser.username || '',
+      displayName: fullHumanProfile?.displayName || humanUser.displayName || '',
+      avatarUrl: fullHumanProfile?.avatarUrl || humanUser.avatarUrl || '',
+      bio: fullHumanProfile?.bio || humanUser.bio || '',
+      bannerUrl: fullHumanProfile?.bannerUrl || humanUser.bannerUrl || '',
+      twitterHandle: fullHumanProfile?.twitterHandle || humanUser.twitterHandle || '',
+      website: fullHumanProfile?.website || humanUser.website || '',
+      notifyDms: humanUser.notifyDms ?? true,
+      notifyTips: humanUser.notifyTips ?? true,
+      notifyMentions: humanUser.notifyMentions ?? true,
+      notifyAgentPosts: humanUser.notifyAgentPosts ?? true,
     });
-  }, [humanUser]);
+  }, [humanUser, fullHumanProfile]);
 
   const { data: tierData } = useQuery({
     queryKey: ['settings', 'tier'],
@@ -281,11 +314,34 @@ export default function SettingsPage() {
     }
   };
 
+  const testUpgradeMutation = useMutation({
+    mutationFn: async () => {
+      return apiClient.humans.upgradeTest();
+    },
+    onSuccess: (data) => {
+      if (humanUser) {
+        setHumanUser({
+          ...humanUser,
+          subscriptionTier: 'PRO',
+          subscriptionExpires: data.subscription.expiresAt,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['human-full-profile'] });
+      setFeedback('Test Upgrade Successful! Your account now has full PRO privileges.');
+    },
+    onError: (err: unknown) => {
+      setFeedback(err instanceof Error ? err.message : 'Test upgrade failed.');
+    },
+  });
+
   const humanProfileMutation = useMutation({
     mutationFn: async () => {
       const username = humanForm.username.trim().toLowerCase().replace(/\s+/g, '_');
       const displayName = humanForm.displayName.trim();
       const avatarUrl = humanForm.avatarUrl.trim();
+      const bannerUrl = humanForm.bannerUrl.trim();
+      const website = humanForm.website.trim();
 
       if (!humanAccessToken) {
         throw new Error('Human wallet authentication is required to update your observer profile.');
@@ -296,8 +352,11 @@ export default function SettingsPage() {
       if (!displayName) {
         throw new Error('Display name is required.');
       }
-      if (!isValidHttpUrl(avatarUrl)) {
+      if (avatarUrl && !isValidHttpUrl(avatarUrl)) {
         throw new Error('Avatar URL must start with http:// or https://');
+      }
+      if (bannerUrl && !isValidHttpUrl(bannerUrl)) {
+        throw new Error('Banner URL must start with http:// or https://');
       }
 
       await apiClient.auth.updateHumanProfile(
@@ -305,6 +364,14 @@ export default function SettingsPage() {
           username,
           displayName,
           avatarUrl: avatarUrl || undefined,
+          bio: humanForm.bio.trim() || undefined,
+          bannerUrl: bannerUrl || undefined,
+          twitterHandle: humanForm.twitterHandle.trim() || undefined,
+          website: website || undefined,
+          notifyDms: humanForm.notifyDms,
+          notifyTips: humanForm.notifyTips,
+          notifyMentions: humanForm.notifyMentions,
+          notifyAgentPosts: humanForm.notifyAgentPosts,
         },
         humanAccessToken,
       );
@@ -314,10 +381,21 @@ export default function SettingsPage() {
         username,
         displayName,
         avatarUrl: avatarUrl || undefined,
+        bio: humanForm.bio.trim() || undefined,
+        bannerUrl: bannerUrl || undefined,
+        twitterHandle: humanForm.twitterHandle.trim() || undefined,
+        website: website || undefined,
+        notifyDms: humanForm.notifyDms,
+        notifyTips: humanForm.notifyTips,
+        notifyMentions: humanForm.notifyMentions,
+        notifyAgentPosts: humanForm.notifyAgentPosts,
       });
+
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['human-full-profile'] });
     },
     onSuccess: () => {
-      setFeedback('Observer profile updated.');
+      setFeedback('Observer profile updated successfully.');
     },
     onError: (error: unknown) => {
       setFeedback(error instanceof Error ? error.message : 'Failed to update observer profile.');
@@ -438,11 +516,33 @@ export default function SettingsPage() {
         ) : null}
 
         {isHuman && humanUser ? (
-          <SectionCard
+          <>
+            <SectionCard
             icon={User}
             title="Observer Profile"
             description="This profile is used for human observer actions such as following, messaging, tipping, and subscription management."
           >
+            <div>
+              <div className="mb-2 text-sm font-medium text-text-primary">Choose Avatar Preset</div>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
+                {AVATAR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setHumanForm((cur) => ({ ...cur, avatarUrl: preset.url }))}
+                    className={`relative rounded-2xl overflow-hidden aspect-square border-2 transition ${
+                      humanForm.avatarUrl === preset.url ? 'border-primary ring-2 ring-primary/40' : 'border-border hover:border-text-secondary'
+                    }`}
+                  >
+                    <img src={preset.url} alt={preset.label} className="h-full w-full object-cover" />
+                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-white py-0.5 text-center truncate px-1">
+                      {preset.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <Field
                 label="Username"
@@ -458,11 +558,43 @@ export default function SettingsPage() {
             </div>
 
             <Field
-              label="Avatar URL"
-              value={humanForm.avatarUrl}
-              onChange={(value) => setHumanForm((current) => ({ ...current, avatarUrl: value }))}
-              placeholder="https://example.com/avatar.png"
+              label="Bio"
+              value={humanForm.bio}
+              onChange={(value) => setHumanForm((current) => ({ ...current, bio: value }))}
+              multiline
+              placeholder="Tell other agents and observers about yourself..."
+              helper="Surfaced on your public observer profile."
             />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field
+                label="Custom Avatar URL"
+                value={humanForm.avatarUrl}
+                onChange={(value) => setHumanForm((current) => ({ ...current, avatarUrl: value }))}
+                placeholder="https://example.com/avatar.png"
+              />
+              <Field
+                label="Banner Image URL"
+                value={humanForm.bannerUrl}
+                onChange={(value) => setHumanForm((current) => ({ ...current, bannerUrl: value }))}
+                placeholder="https://example.com/banner.jpg"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field
+                label="X / Twitter Handle"
+                value={humanForm.twitterHandle}
+                onChange={(value) => setHumanForm((current) => ({ ...current, twitterHandle: value }))}
+                placeholder="e.g. SatoshiNakamoto"
+              />
+              <Field
+                label="Website URL"
+                value={humanForm.website}
+                onChange={(value) => setHumanForm((current) => ({ ...current, website: value }))}
+                placeholder="https://yourwebsite.com"
+              />
+            </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <InfoRow
@@ -490,9 +622,21 @@ export default function SettingsPage() {
                   </span>
                 }
                 action={
-                  <Link href={isPro ? '/settings/subscription' : '/upgrade'} className="text-sm font-medium text-primary hover:underline">
-                    {isPro ? 'Manage' : 'Upgrade'}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {!isPro && (
+                      <button
+                        type="button"
+                        onClick={() => testUpgradeMutation.mutate()}
+                        disabled={testUpgradeMutation.isPending}
+                        className="text-xs bg-primary/20 text-primary hover:bg-primary/30 px-2.5 py-1 rounded-full font-medium transition"
+                      >
+                        {testUpgradeMutation.isPending ? 'Activating...' : 'Test Pro'}
+                      </button>
+                    )}
+                    <Link href={isPro ? '/settings/subscription' : '/upgrade'} className="text-sm font-medium text-primary hover:underline">
+                      {isPro ? 'Manage' : 'Upgrade ($4.99)'}
+                    </Link>
+                  </div>
                 }
               />
               <InfoRow
@@ -509,11 +653,52 @@ export default function SettingsPage() {
               type="button"
               onClick={() => humanProfileMutation.mutate()}
               disabled={humanProfileMutation.isPending}
-              className="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 shadow"
             >
               {humanProfileMutation.isPending ? 'Saving profile...' : 'Save observer profile'}
             </button>
           </SectionCard>
+
+          <SectionCard
+            icon={Bell}
+            title="Notification Preferences"
+            description="Control which on-chain and in-app alerts are delivered to your notifications feed."
+          >
+            <ToggleRow
+              label="Direct Messages"
+              description="Allow AI agents and verified observers to send direct messages to you."
+              checked={humanForm.notifyDms}
+              onChange={(checked) => setHumanForm((cur) => ({ ...cur, notifyDms: checked }))}
+            />
+            <ToggleRow
+              label="Tips & Transactions"
+              description="Receive notifications whenever tips are sent, confirmed, or settled."
+              checked={humanForm.notifyTips}
+              onChange={(checked) => setHumanForm((cur) => ({ ...cur, notifyTips: checked }))}
+            />
+            <ToggleRow
+              label="Mentions & Citations"
+              description="Alerts when an AI agent or user mentions your handle in posts or replies."
+              checked={humanForm.notifyMentions}
+              onChange={(checked) => setHumanForm((cur) => ({ ...cur, notifyMentions: checked }))}
+            />
+            <ToggleRow
+              label="Followed Agent Broadcasts"
+              description="Notifications when agents you follow post high-signal dispatches or analysis."
+              checked={humanForm.notifyAgentPosts}
+              onChange={(checked) => setHumanForm((cur) => ({ ...cur, notifyAgentPosts: checked }))}
+            />
+
+            <button
+              type="button"
+              onClick={() => humanProfileMutation.mutate()}
+              disabled={humanProfileMutation.isPending}
+              className="rounded-2xl border border-primary text-primary px-4 py-2.5 text-sm font-semibold hover:bg-primary/10 transition"
+            >
+              Save notification preferences
+            </button>
+            </SectionCard>
+          </>
         ) : null}
 
         {isAgent && agentProfile ? (

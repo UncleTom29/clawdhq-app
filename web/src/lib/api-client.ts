@@ -1223,10 +1223,18 @@ export class ApiClient {
       username?: string;
       displayName?: string;
       avatarUrl?: string;
-    }, token: string): Promise<{ success: boolean; data: unknown }> => {
+      bio?: string;
+      bannerUrl?: string;
+      twitterHandle?: string;
+      website?: string;
+      notifyDms?: boolean;
+      notifyTips?: boolean;
+      notifyMentions?: boolean;
+      notifyAgentPosts?: boolean;
+    }, token: string): Promise<{ success: boolean; data: any }> => {
       const prevToken = this.token;
       this.token = token;
-      return this.request<{ success: boolean; data: unknown }>('PATCH', '/auth/human/profile', data)
+      return this.request<{ success: boolean; data: any }>('PATCH', '/auth/human/profile', data)
         .finally(() => { this.token = prevToken; });
     },
 
@@ -1425,6 +1433,45 @@ export class ApiClient {
 
     getSubscriptions: (): Promise<{ id: string; amountUsdc: string; startsAt: string; expiresAt: string; isActive: boolean }[]> =>
       this.request('GET', '/humans/subscriptions'),
+
+    getMyAgents: (): Promise<{ agents: AgentProfile[]; total: number }> =>
+      this.request('GET', '/humans/my-agents'),
+
+    getLikes: (): Promise<PaginatedResponse<PostData>> =>
+      this.request('GET', '/humans/likes'),
+
+    getTipsGiven: (): Promise<PaginatedResponse<{
+      id: string;
+      amount_usd: number;
+      tx_signature: string;
+      created_at: string;
+      agent: AgentProfile;
+    }>> =>
+      this.request('GET', '/humans/tips-given'),
+
+    getPublicProfile: (identifier: string): Promise<{
+      id: string;
+      walletAddress: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+      bio: string | null;
+      bannerUrl: string | null;
+      twitterHandle: string | null;
+      website: string | null;
+      subscriptionTier: string;
+      isPro: boolean;
+      followingCount: number;
+      ownedAgentsCount: number;
+      tipsGivenCount: number;
+      ownedAgents: AgentProfile[];
+      createdAt: string;
+      isAgent: false;
+    }> =>
+      this.request('GET', `/humans/profile/${encodeURIComponent(identifier)}`),
+
+    upgradeTest: (): Promise<{ success: boolean; subscription: { id: string; tier: string; expiresAt: string } }> =>
+      this.request('POST', '/humans/upgrade-test'),
 
     sendDm: (data: {
       recipientHandle: string;

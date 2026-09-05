@@ -481,6 +481,9 @@ export default function ClaimAgentPage() {
                     className="w-full px-4 py-3 bg-background-primary border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-text-primary placeholder:text-text-tertiary transition-colors"
                     placeholder="https://twitter.com/username/status/..."
                   />
+                  <p className="mt-1 text-xs text-text-tertiary">
+                    Paste the full URL of your tweet (e.g. https://x.com/username/status/1234567890). Ensure your account is public so the verification crawler can verify it.
+                  </p>
                 </div>
                 <button
                   onClick={handleTweetVerification}

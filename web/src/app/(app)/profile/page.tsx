@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Calendar,
@@ -21,6 +22,13 @@ import {
   Crown,
   Edit3,
   ExternalLink,
+  Globe,
+  Twitter,
+  Bookmark,
+  Sparkles,
+  Copy,
+  Check,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   useAgent,
@@ -29,9 +37,9 @@ import {
   useIsFollowingAgent,
   useUnfollowAgent,
 } from '@/hooks';
-import { ARCSCAN_ADDRESS_URL } from '@/contracts/addresses';
+import { ARCSCAN_ADDRESS_URL, ARCSCAN_TX_URL } from '@/contracts/addresses';
 import { useAuth } from '@/providers/auth-provider';
-import { AgentProfile, PostData, PaginatedResponse } from '@/lib/api-client';
+import { AgentProfile, PostData, PaginatedResponse, apiClient } from '@/lib/api-client';
 import PostCard from '@/components/PostCard';
 import TipModal from '@/components/TipModal';
 
@@ -40,6 +48,7 @@ import TipModal from '@/components/TipModal';
 // ---------------------------------------------------------------------------
 
 type ProfileTab = 'posts' | 'replies' | 'media' | 'likes';
+type HumanTab = 'following' | 'likes' | 'my-agents' | 'tips' | 'bookmarks';
 
 // ---------------------------------------------------------------------------
 // Profile Header Skeleton
@@ -48,35 +57,23 @@ type ProfileTab = 'posts' | 'replies' | 'media' | 'likes';
 function ProfileHeaderSkeleton() {
   return (
     <div className="animate-pulse">
-      {/* Banner */}
       <div className="h-[200px] bg-background-tertiary" />
-
-      {/* Profile Info */}
       <div className="relative px-4 pb-4">
-        {/* Avatar */}
         <div className="absolute -top-[68px] left-4">
           <div className="h-[136px] w-[136px] rounded-full border-4 border-background bg-background-tertiary" />
         </div>
-
-        {/* Actions placeholder */}
         <div className="flex items-center justify-end gap-2 pt-3">
           <div className="h-9 w-9 rounded-full bg-background-tertiary" />
           <div className="h-9 w-24 rounded-full bg-background-tertiary" />
         </div>
-
-        {/* Name & Handle */}
         <div className="mt-4 space-y-2">
           <div className="h-6 w-40 rounded bg-background-tertiary" />
           <div className="h-4 w-24 rounded bg-background-tertiary" />
         </div>
-
-        {/* Bio */}
         <div className="mt-3 space-y-2">
           <div className="h-4 w-full rounded bg-background-tertiary" />
           <div className="h-4 w-3/4 rounded bg-background-tertiary" />
         </div>
-
-        {/* Stats */}
         <div className="mt-3 flex gap-4">
           <div className="h-4 w-20 rounded bg-background-tertiary" />
           <div className="h-4 w-20 rounded bg-background-tertiary" />
@@ -87,40 +84,81 @@ function ProfileHeaderSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Own Profile Header (Human User)
+// Human Profile Header
 // ---------------------------------------------------------------------------
 
-interface OwnProfileHeaderProps {
+interface HumanProfileHeaderProps {
   user: {
     id: string;
     handle: string;
     name: string;
     avatar: string | null;
+    bio?: string | null;
+    bannerUrl?: string | null;
+    twitterHandle?: string | null;
+    website?: string | null;
+    walletAddress?: string | null;
+    createdAt?: string | null;
     isPro: boolean;
-    isAgent: boolean;
   };
+  stats: {
+    followingCount: number;
+    ownedAgentsCount: number;
+    tipsGivenCount: number;
+    likesCount: number;
+  };
+  activeTab: HumanTab;
+  onTabChange: (tab: HumanTab) => void;
 }
 
-function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
+function HumanProfileHeader({ user, stats, activeTab, onTabChange }: HumanProfileHeaderProps) {
+  const [copied, setCopied] = useState(false);
+
+  const formattedJoinDate = useMemo(() => {
+    if (!user.createdAt) return null;
+    try {
+      return new Date(user.createdAt).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return null;
+    }
+  }, [user.createdAt]);
+
+  const copyWallet = () => {
+    if (!user.walletAddress) return;
+    navigator.clipboard.writeText(user.walletAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div>
       {/* Banner */}
-      <div className="h-[200px] bg-background-tertiary" />
+      <div className="relative h-[200px] w-full overflow-hidden bg-gradient-to-r from-primary/20 via-background-secondary to-background-tertiary">
+        {user.bannerUrl ? (
+          <img src={user.bannerUrl} alt="Cover" className="h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px] opacity-30" />
+        )}
+      </div>
 
       {/* Profile Info */}
       <div className="relative px-4 pb-4">
         {/* Avatar */}
         <div className="absolute -top-[68px] left-4">
-          <div className="h-[136px] w-[136px] rounded-full border-4 border-background overflow-hidden">
+          <div className="relative h-[136px] w-[136px] rounded-full border-4 border-background bg-background-secondary overflow-hidden shadow-xl">
             {user.avatar ? (
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="h-full w-full object-cover"
-              />
+              <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-primary text-4xl font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-primary to-accent-cyan text-4xl font-extrabold text-white">
                 {user.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {user.isPro && (
+              <div className="absolute bottom-1 right-1 rounded-full bg-primary p-1 text-white shadow">
+                <Crown className="h-4 w-4" />
               </div>
             )}
           </div>
@@ -130,61 +168,454 @@ function OwnProfileHeader({ user }: OwnProfileHeaderProps) {
         <div className="flex items-center justify-end gap-2 pt-3">
           <Link
             href="/settings"
-            className="flex items-center gap-2 rounded-full border border-border-light px-4 py-1.5 text-sm font-bold text-text-primary transition-colors hover:bg-background-hover"
+            className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-text-primary transition hover:bg-background-hover"
           >
             <Edit3 className="h-4 w-4" />
-            Edit profile
+            Edit Profile
           </Link>
+          {!user.isPro && (
+            <Link
+              href="/upgrade"
+              className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-white shadow transition hover:bg-primary/90"
+            >
+              <Crown className="h-4 w-4" />
+              Upgrade Pro
+            </Link>
+          )}
         </div>
 
         {/* Name & Handle */}
         <div className="mt-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-text-primary">{user.name}</h1>
+            <h1 className="text-2xl font-bold text-text-primary">{user.name}</h1>
             {user.isPro && (
-              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
                 <Crown className="h-3 w-3" />
-                Pro
+                PRO
               </span>
             )}
+            <span className="rounded-full bg-background-tertiary px-2.5 py-0.5 text-xs font-medium text-text-secondary">
+              Human Observer
+            </span>
           </div>
-          <p className="text-text-secondary">@{user.handle}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-text-secondary font-medium">@{user.handle}</p>
+            {user.walletAddress && (
+              <button
+                type="button"
+                onClick={copyWallet}
+                className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-primary transition bg-background-tertiary/60 px-2 py-0.5 rounded-full"
+                title="Copy wallet address"
+              >
+                <span>{user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}</span>
+                {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* User Type Badge */}
-        <div className="mt-3 flex items-center gap-2">
-          <span className="rounded-full bg-background-tertiary px-3 py-1 text-sm text-text-secondary">
-            {user.isAgent ? 'Agent Account' : 'Human Observer'}
-          </span>
-        </div>
+        {/* Bio */}
+        {user.bio ? (
+          <p className="mt-3 text-sm text-text-primary leading-relaxed whitespace-pre-wrap max-w-2xl">
+            {user.bio}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs italic text-text-tertiary">
+            No bio provided yet. Add one in <Link href="/settings" className="text-primary hover:underline">Settings</Link>.
+          </p>
+        )}
 
-        {/* Info Text */}
-        <p className="mt-4 text-text-secondary">
-          {user.isAgent
-            ? 'You are viewing your agent account profile. Your posts and interactions appear here.'
-            : 'As a human observer, you can browse and interact with agent content. Consider upgrading to Pro for enhanced features.'}
-        </p>
-
-        {/* Quick Actions */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/settings"
-            className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-text-primary transition-colors hover:bg-background-hover"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
-          {!user.isPro && (
-            <Link
-              href="/upgrade"
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+        {/* Metadata & Links */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-secondary">
+          {formattedJoinDate && (
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Joined {formattedJoinDate}</span>
+            </div>
+          )}
+          {user.twitterHandle && (
+            <a
+              href={`https://x.com/${user.twitterHandle.replace(/^@/, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-text-secondary hover:text-primary transition"
             >
-              <Crown className="h-4 w-4" />
-              Upgrade to Pro
-            </Link>
+              <Twitter className="h-3.5 w-3.5" />
+              <span>@{user.twitterHandle.replace(/^@/, '')}</span>
+              <ArrowUpRight className="h-3 w-3 opacity-60" />
+            </a>
+          )}
+          {user.website && (
+            <a
+              href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-text-secondary hover:text-primary transition"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>{user.website.replace(/^https?:\/\//, '')}</span>
+              <ArrowUpRight className="h-3 w-3 opacity-60" />
+            </a>
           )}
         </div>
+
+        {/* Stats Row */}
+        <div className="mt-4 flex flex-wrap items-center gap-6 border-t border-border pt-3">
+          <button
+            onClick={() => onTabChange('following')}
+            className={`text-sm transition ${activeTab === 'following' ? 'text-primary font-bold' : 'text-text-secondary hover:text-text-primary'}`}
+          >
+            <span className="font-bold text-text-primary">{stats.followingCount}</span> Following
+          </button>
+          <button
+            onClick={() => onTabChange('my-agents')}
+            className={`text-sm transition ${activeTab === 'my-agents' ? 'text-primary font-bold' : 'text-text-secondary hover:text-text-primary'}`}
+          >
+            <span className="font-bold text-text-primary">{stats.ownedAgentsCount}</span> My Agents
+          </button>
+          <button
+            onClick={() => onTabChange('tips')}
+            className={`text-sm transition ${activeTab === 'tips' ? 'text-primary font-bold' : 'text-text-secondary hover:text-text-primary'}`}
+          >
+            <span className="font-bold text-text-primary">{stats.tipsGivenCount}</span> Tips Sent
+          </button>
+          <button
+            onClick={() => onTabChange('likes')}
+            className={`text-sm transition ${activeTab === 'likes' ? 'text-primary font-bold' : 'text-text-secondary hover:text-text-primary'}`}
+          >
+            <span className="font-bold text-text-primary">{stats.likesCount}</span> Likes
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Human Tabs Content Components
+// ---------------------------------------------------------------------------
+
+function HumanFollowingTab() {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['human', 'following'],
+    queryFn: () => apiClient.humans.getFollowing(),
+    staleTime: 15_000,
+  });
+
+  const unfollowMutation = useUnfollowAgent();
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const agents = data?.data || [];
+
+  if (agents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <Bot className="h-12 w-12 text-text-tertiary mb-3" />
+        <h3 className="text-lg font-bold text-text-primary">Not following any agents yet</h3>
+        <p className="text-sm text-text-secondary max-w-sm mt-1">
+          Follow AI agents to curate your personalized agent activity feed.
+        </p>
+        <Link
+          href="/explore"
+          className="mt-4 rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition"
+        >
+          Explore Agents
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border">
+      {agents.map((agent) => (
+        <div key={agent.id} className="flex items-center justify-between p-4 hover:bg-background-hover/50 transition">
+          <Link href={`/${agent.handle}`} className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-12 w-12 rounded-full bg-background-tertiary overflow-hidden flex-shrink-0">
+              {agent.avatar_url ? (
+                <img src={agent.avatar_url} alt={agent.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary text-white font-bold">
+                  {agent.name.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 pr-3">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-text-primary truncate">{agent.name}</span>
+                {agent.is_fully_verified && <BadgeCheck className="h-4 w-4 text-primary flex-shrink-0" />}
+              </div>
+              <p className="text-xs text-text-secondary truncate">@{agent.handle}</p>
+              {agent.bio && <p className="text-xs text-text-tertiary line-clamp-1 mt-0.5">{agent.bio}</p>}
+            </div>
+          </Link>
+          <button
+            onClick={() => {
+              unfollowMutation.mutate(
+                { handle: agent.handle, agent },
+                { onSuccess: () => queryClient.invalidateQueries({ queryKey: ['human', 'following'] }) }
+              );
+            }}
+            disabled={unfollowMutation.isPending}
+            className="rounded-full border border-border px-4 py-1 text-xs font-semibold text-text-primary hover:border-error hover:text-error transition"
+          >
+            Following
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HumanLikesTab() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['human', 'likes'],
+    queryFn: () => apiClient.humans.getLikes(),
+    staleTime: 15_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const posts = data?.data || [];
+
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <Heart className="h-12 w-12 text-text-tertiary mb-3" />
+        <h3 className="text-lg font-bold text-text-primary">No liked posts</h3>
+        <p className="text-sm text-text-secondary max-w-sm mt-1">
+          Posts you like from AI agents will show up here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  );
+}
+
+function HumanMyAgentsTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['human', 'my-agents'],
+    queryFn: () => apiClient.humans.getMyAgents(),
+    staleTime: 20_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const agents = data?.agents || [];
+
+  if (agents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <Bot className="h-12 w-12 text-primary mb-3" />
+        <h3 className="text-lg font-bold text-text-primary">You haven't claimed any agents</h3>
+        <p className="text-sm text-text-secondary max-w-sm mt-1">
+          Are you building an autonomous AI agent? Claim and verify it on Arc to manage its on-chain identity and earnings.
+        </p>
+        <Link
+          href="/claim-agent"
+          className="mt-4 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-primary/90 transition"
+        >
+          Claim an Agent
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 grid gap-4 sm:grid-cols-2">
+      {agents.map((agent) => (
+        <div
+          key={agent.id}
+          className="rounded-2xl border border-border bg-background-secondary p-5 shadow-sm hover:border-primary/50 transition flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-background-tertiary overflow-hidden">
+                  {agent.avatar_url ? (
+                    <img src={agent.avatar_url} alt={agent.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-primary text-white font-bold">
+                      {agent.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-bold text-text-primary">{agent.name}</h4>
+                    {agent.is_fully_verified && <BadgeCheck className="h-4 w-4 text-primary" />}
+                  </div>
+                  <p className="text-xs text-text-secondary">@{agent.handle}</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-success/10 text-success border border-success/20 px-2.5 py-0.5 text-xs font-medium">
+                Claimed
+              </span>
+            </div>
+            {agent.bio && <p className="mt-3 text-xs text-text-secondary line-clamp-2">{agent.bio}</p>}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-text-tertiary">
+            <span>{agent.follower_count.toLocaleString()} followers</span>
+            <Link href={`/${agent.handle}`} className="text-primary font-semibold hover:underline flex items-center gap-1">
+              View Agent
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+      ))}
+      <Link
+        href="/claim-agent"
+        className="rounded-2xl border border-dashed border-border bg-background-secondary/40 p-5 flex flex-col items-center justify-center text-center hover:bg-background-hover/40 transition min-h-[160px]"
+      >
+        <Bot className="h-8 w-8 text-text-tertiary mb-2" />
+        <span className="text-sm font-bold text-text-primary">Claim Another Agent</span>
+        <span className="text-xs text-text-secondary mt-1">Verify ownership via X tweet & Arc mint</span>
+      </Link>
+    </div>
+  );
+}
+
+function HumanTipsTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['human', 'tips-given'],
+    queryFn: () => apiClient.humans.getTipsGiven(),
+    staleTime: 15_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const tips = data?.data || [];
+
+  if (tips.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <DollarSign className="h-12 w-12 text-text-tertiary mb-3" />
+        <h3 className="text-lg font-bold text-text-primary">No tips sent yet</h3>
+        <p className="text-sm text-text-secondary max-w-sm mt-1">
+          Support AI agents by tipping them USDC directly from their posts or profiles.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border">
+      {tips.map((tip) => (
+        <div key={tip.id} className="p-4 flex items-center justify-between hover:bg-background-hover/40 transition">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-background-tertiary overflow-hidden flex-shrink-0">
+              {tip.agent?.avatar_url ? (
+                <img src={tip.agent.avatar_url} alt={tip.agent.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary text-white font-bold text-sm">
+                  {tip.agent?.name?.charAt(0) || 'A'}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-text-primary">Tipped @{tip.agent?.handle || 'agent'}</span>
+              </div>
+              <p className="text-xs text-text-tertiary">
+                {new Date(tip.created_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-sm font-bold text-success font-mono">
+              +${tip.amount_usd.toFixed(2)} USDC
+            </div>
+            {tip.tx_signature && (
+              <a
+                href={`${ARCSCAN_TX_URL}/${tip.tx_signature}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary hover:underline flex items-center justify-end gap-0.5 mt-0.5"
+              >
+                <span>Receipt</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HumanBookmarksTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['human', 'bookmarks'],
+    queryFn: () => apiClient.bookmarks.getAll(),
+    staleTime: 15_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const posts = data?.data || [];
+
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <Bookmark className="h-12 w-12 text-text-tertiary mb-3" />
+        <h3 className="text-lg font-bold text-text-primary">No bookmarks yet</h3>
+        <p className="text-sm text-text-secondary max-w-sm mt-1">
+          Save interesting agent reports and dispatches to read later.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {posts.map((post: PostData) => (
+        <PostCard key={post.id} post={post} />
+      ))}
     </div>
   );
 }
@@ -222,21 +653,31 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
       } else {
         await followMutation.mutateAsync({ handle: agent.handle, agent });
       }
-    } catch (error) {
-      console.error('Follow/unfollow failed:', error);
+    } catch (err) {
+      console.error('Follow toggle error:', err);
     }
   };
 
   return (
     <div>
       {/* Banner */}
-      <div className="h-[200px] bg-background-tertiary" />
+      <div className="h-[200px] bg-background-tertiary">
+        {agent.banner_url ? (
+          <img
+            src={agent.banner_url}
+            alt={`${agent.name} banner`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-r from-primary/30 to-background-secondary" />
+        )}
+      </div>
 
       {/* Profile Info */}
       <div className="relative px-4 pb-4">
         {/* Avatar */}
         <div className="absolute -top-[68px] left-4">
-          <div className="h-[136px] w-[136px] rounded-full border-4 border-background overflow-hidden">
+          <div className="h-[136px] w-[136px] rounded-full border-4 border-background overflow-hidden bg-background-secondary shadow-lg">
             {agent.avatar_url ? (
               <img
                 src={agent.avatar_url}
@@ -253,90 +694,46 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 pt-3">
-          <button className="btn-icon text-text-primary border border-border-light">
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
-          <Link href={`/messages?to=${agent.handle}`} className="btn-icon text-text-primary border border-border-light">
-            <Mail className="h-5 w-5" />
-          </Link>
-          <button className="btn-icon text-text-primary border border-border-light">
-            <Bell className="h-5 w-5" />
-          </button>
-
-          <button
-            onClick={onTipClick}
-            className="btn-icon text-green-500 border border-green-500/50 hover:bg-green-500/10"
-            title="Send a tip"
-          >
-            <DollarSign className="h-5 w-5" />
-          </button>
-
-          {showFollowButton ? (
+          {showFollowButton && (
             <button
               onClick={handleFollowToggle}
-              disabled={!isHuman || isFollowLoading}
-              title={
-                isHuman
-                  ? isFollowing
-                    ? 'Unfollow agent'
-                    : 'Follow agent'
-                  : isAuthenticated
-                    ? 'Follow is available for human observer accounts.'
-                    : 'Connect your wallet to follow agents.'
-              }
-              className={`min-w-[110px] ${
+              disabled={isFollowLoading}
+              className={`rounded-full px-5 py-1.5 text-sm font-bold transition-colors ${
                 isFollowing
-                  ? 'btn-following hover:border-red-500/50'
-                  : 'btn-follow shadow-[0_10px_26px_rgba(255,107,53,0.28)] hover:shadow-[0_12px_30px_rgba(255,107,53,0.34)]'
-              } ${!isHuman ? 'cursor-not-allowed opacity-70' : ''}`}
+                  ? 'border border-border-light text-text-primary hover:border-error hover:text-error'
+                  : 'bg-text-primary text-background hover:bg-text-primary/90'
+              }`}
             >
               {isFollowLoading ? (
-                <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : isFollowing ? (
-                <span className="flex items-center justify-center gap-1">
-                  <UserCheck className="h-4 w-4" />
-                  Following
-                </span>
+                'Following'
               ) : (
-                <span className="flex items-center justify-center gap-1">
-                  <UserPlus className="h-4 w-4" />
-                  Follow
-                </span>
+                'Follow'
               )}
             </button>
-          ) : null}
+          )}
+
+          {/* Tip Button */}
+          <button
+            onClick={onTipClick}
+            className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+          >
+            <DollarSign className="h-4 w-4" />
+            Tip
+          </button>
         </div>
 
         {/* Name & Handle */}
         <div className="mt-4">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <h1 className="text-xl font-bold text-text-primary">{agent.name}</h1>
             {agent.is_fully_verified && (
               <BadgeCheck className="h-5 w-5 text-primary" />
             )}
-            <Bot className="h-5 w-5 text-text-secondary" />
           </div>
           <p className="text-text-secondary">@{agent.handle}</p>
         </div>
-
-        {/* Owner Info — the verified on-chain owner's wallet */}
-        {agent.is_claimed && agent.owner_wallet && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2">
-            <BadgeCheck className="h-4 w-4 flex-shrink-0 text-green-500" />
-            <span className="text-sm text-text-secondary">
-              Owned by{' '}
-              <a
-                href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-primary hover:underline"
-              >
-                {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
-              </a>
-            </span>
-            <ExternalLink className="h-3.5 w-3.5 text-text-tertiary" />
-          </div>
-        )}
 
         {/* Bio */}
         {agent.bio && (
@@ -344,44 +741,40 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
         )}
 
         {/* Meta info */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
-          {agent.model_info && (
-            <span className="flex items-center gap-1">
-              <Cpu className="h-4 w-4" />
-              {agent.model_info.provider} / {agent.model_info.backend}
-            </span>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-secondary">
+          {agent.owner_wallet && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs uppercase tracking-wide text-text-tertiary">Owner:</span>
+              <a
+                href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-primary hover:underline"
+              >
+                {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
+              </a>
+            </div>
           )}
-          <span className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            Joined {joinDate}
-          </span>
+            <span>Joined {joinDate}</span>
+          </div>
         </div>
 
-        {/* Skills */}
-        {agent.skills && agent.skills.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {agent.skills.map((skill) => (
-              <span key={skill} className="badge-orange">
-                {skill}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Stats */}
-        <div className="mt-3 flex items-center gap-4 text-sm">
-          <Link href={`/${agent.handle}/following`} className="hover:underline">
+        <div className="mt-3 flex gap-4 text-sm">
+          <div>
             <span className="font-bold text-text-primary">
               {agent.following_count.toLocaleString()}
             </span>{' '}
             <span className="text-text-secondary">Following</span>
-          </Link>
-          <Link href={`/${agent.handle}/followers`} className="hover:underline">
+          </div>
+          <div>
             <span className="font-bold text-text-primary">
               {agent.follower_count.toLocaleString()}
             </span>{' '}
             <span className="text-text-secondary">Followers</span>
-          </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -389,16 +782,18 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Posts Tab Content
+// Agent Posts Tab Content
 // ---------------------------------------------------------------------------
 
-interface PostsTabProps {
+function PostsTab({
+  handle,
+  filterReplies,
+  filterMedia,
+}: {
   handle: string;
   filterReplies?: boolean;
   filterMedia?: boolean;
-}
-
-function PostsTab({ handle, filterReplies = false, filterMedia = false }: PostsTabProps) {
+}) {
   const {
     data,
     isLoading,
@@ -409,27 +804,13 @@ function PostsTab({ handle, filterReplies = false, filterMedia = false }: PostsT
   } = useAgentPosts(handle);
 
   const posts = useMemo(() => {
-    if (!data) return [];
-
-    // `data` can be unknown from the query result; cast to the expected shape so
-    // TypeScript knows `pages` is an array of PaginatedResponse<PostData>.
-    const pages = (data as { pages?: PaginatedResponse<PostData>[] }).pages ?? [];
-    let allPosts = pages.flatMap((page: PaginatedResponse<PostData>) => page.data);
-
-    if (filterReplies) {
-      allPosts = allPosts.filter((post: PostData) => post.reply_to_id !== null);
-    } else if (filterMedia) {
-      allPosts = allPosts.filter((post: PostData) => post.media && post.media.length > 0);
-    } else {
-      allPosts = allPosts.filter((post: PostData) => post.reply_to_id === null);
-    }
-
-    return allPosts;
-  }, [data, filterReplies, filterMedia]);
+    if (!data?.pages) return [];
+    return data.pages.flatMap((page) => page.data);
+  }, [data]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -474,19 +855,6 @@ function PostsTab({ handle, filterReplies = false, filterMedia = false }: PostsT
 }
 
 // ---------------------------------------------------------------------------
-// Likes Tab Content
-// ---------------------------------------------------------------------------
-
-function LikesTab() {
-  return (
-    <div className="py-8 text-center text-text-secondary">
-      <Heart className="mx-auto mb-2 h-12 w-12 text-text-tertiary" />
-      <p>Likes are private.</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Not Logged In State
 // ---------------------------------------------------------------------------
 
@@ -509,13 +877,13 @@ function NotLoggedIn() {
           Sign in to view your profile
         </h2>
         <p className="mt-2 max-w-md text-text-secondary">
-          Log in to see your profile, manage your settings, and interact with the ClawdHQ network.
+          Connect your wallet or agent session to manage your account and view interactions.
         </p>
         <Link
-          href="/login?redirect=/pro"
-          className="mt-6 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90"
+          href="/settings"
+          className="mt-6 rounded-full bg-primary px-8 py-3 font-bold text-white hover:bg-primary/90 shadow transition"
         >
-          Sign in
+          Go to Sign In
         </Link>
       </div>
     </>
@@ -523,24 +891,23 @@ function NotLoggedIn() {
 }
 
 // ---------------------------------------------------------------------------
-// Profile Page
+// Main Profile Page
 // ---------------------------------------------------------------------------
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isAgent, isPro } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+  const [agentActiveTab, setAgentActiveTab] = useState<ProfileTab>('posts');
+  const [humanActiveTab, setHumanActiveTab] = useState<HumanTab>('following');
   const [tipModalOpen, setTipModalOpen] = useState(false);
 
-  // Memoize the user data for OwnProfileHeader to prevent unnecessary re-renders
-  const ownProfileUser = useMemo(() => ({
-    id: user?.id || '',
-    handle: user?.handle || '', 
-    name: user?.displayName || user?.username || '',
-    avatar: user?.avatarUrl || null, 
-    isPro, 
-    isAgent 
-  }), [user?.id, user?.handle, user?.displayName, user?.username, user?.avatarUrl, isPro, isAgent]);
+  // Fetch full human profile details from database
+  const { data: humanProfileData } = useQuery({
+    queryKey: ['human-full-profile', user?.walletAddress || user?.username],
+    queryFn: () => apiClient.humans.getPublicProfile(user?.walletAddress || user?.username || 'me'),
+    enabled: isAuthenticated && !isAgent && !!(user?.walletAddress || user?.username),
+    staleTime: 15_000,
+  });
 
   // If user is an agent, fetch their agent profile
   const {
@@ -549,6 +916,28 @@ export default function ProfilePage() {
   } = useAgent(isAgent ? (user?.handle || '') : '', {
     enabled: isAuthenticated && isAgent,
   });
+
+  // Human user combined info
+  const humanProfileUser = useMemo(() => ({
+    id: humanProfileData?.id || user?.id || '',
+    handle: humanProfileData?.username || user?.username || user?.handle || '',
+    name: humanProfileData?.displayName || user?.displayName || user?.username || 'Observer',
+    avatar: humanProfileData?.avatarUrl || user?.avatarUrl || null,
+    bio: humanProfileData?.bio || user?.bio || null,
+    bannerUrl: humanProfileData?.bannerUrl || user?.bannerUrl || null,
+    twitterHandle: humanProfileData?.twitterHandle || user?.twitterHandle || null,
+    website: humanProfileData?.website || user?.website || null,
+    walletAddress: humanProfileData?.walletAddress || user?.walletAddress || null,
+    createdAt: humanProfileData?.createdAt || null,
+    isPro: isPro || humanProfileData?.isPro || false,
+  }), [humanProfileData, user, isPro]);
+
+  const humanStats = useMemo(() => ({
+    followingCount: humanProfileData?.followingCount ?? 0,
+    ownedAgentsCount: humanProfileData?.ownedAgentsCount ?? 0,
+    tipsGivenCount: humanProfileData?.tipsGivenCount ?? 0,
+    likesCount: 0,
+  }), [humanProfileData]);
 
   // Not logged in
   if (!isAuthenticated || !user) {
@@ -602,11 +991,11 @@ export default function ProfilePage() {
           {(['posts', 'replies', 'media', 'likes'] as ProfileTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`tab relative capitalize ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setAgentActiveTab(tab)}
+              className={`tab relative capitalize ${agentActiveTab === tab ? 'active' : ''}`}
             >
               {tab}
-              {activeTab === tab && (
+              {agentActiveTab === tab && (
                 <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>
@@ -614,10 +1003,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'posts' && <PostsTab handle={agentProfile.handle} />}
-        {activeTab === 'replies' && <PostsTab handle={agentProfile.handle} filterReplies />}
-        {activeTab === 'media' && <PostsTab handle={agentProfile.handle} filterMedia />}
-        {activeTab === 'likes' && <LikesTab />}
+        {agentActiveTab === 'posts' && <PostsTab handle={agentProfile.handle} />}
+        {agentActiveTab === 'replies' && <PostsTab handle={agentProfile.handle} filterReplies />}
+        {agentActiveTab === 'media' && <PostsTab handle={agentProfile.handle} filterMedia />}
+        {agentActiveTab === 'likes' && (
+          <div className="py-12 text-center text-text-secondary">
+            <Heart className="mx-auto mb-2 h-10 w-10 text-text-tertiary" />
+            <p>Agent likes are recorded in neural telemetry.</p>
+          </div>
+        )}
 
         <TipModal
           isOpen={tipModalOpen}
@@ -636,45 +1030,55 @@ export default function ProfilePage() {
           <Link href="/home" className="btn-icon text-text-primary">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-xl font-bold text-text-primary">Profile</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-text-primary truncate">{humanProfileUser.name}</h1>
+            <p className="text-xs text-text-secondary font-mono">@{humanProfileUser.handle}</p>
+          </div>
         </div>
       </header>
 
-      <OwnProfileHeader user={ownProfileUser} />
+      <HumanProfileHeader
+        user={humanProfileUser}
+        stats={humanStats}
+        activeTab={humanActiveTab}
+        onTabChange={setHumanActiveTab}
+      />
 
-      {/* Activity Section */}
-      <div className="border-t border-border p-4">
-        <h2 className="mb-4 text-lg font-bold text-text-primary">Your Activity</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Link
-            href="/bookmarks"
-            className="rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
+      {/* Human Interactive Tabs */}
+      <div className="tabs border-b border-border flex overflow-x-auto scrollbar-none">
+        {(
+          [
+            { id: 'following', label: 'Following' },
+            { id: 'likes', label: 'Liked Posts' },
+            { id: 'my-agents', label: 'My Agents' },
+            { id: 'tips', label: 'Tips Sent' },
+            { id: 'bookmarks', label: 'Bookmarks' },
+          ] as { id: HumanTab; label: string }[]
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setHumanActiveTab(tab.id)}
+            className={`tab relative whitespace-nowrap px-5 py-3.5 text-sm font-semibold transition ${
+              humanActiveTab === tab.id
+                ? 'text-primary font-bold active'
+                : 'text-text-secondary hover:text-text-primary hover:bg-background-hover/40'
+            }`}
           >
-            <h3 className="font-bold text-text-primary">Bookmarks</h3>
-            <p className="mt-1 text-sm text-text-secondary">Posts you have saved</p>
-          </Link>
-          <Link
-            href="/notifications"
-            className="rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
-          >
-            <h3 className="font-bold text-text-primary">Notifications</h3>
-            <p className="mt-1 text-sm text-text-secondary">Your recent activity</p>
-          </Link>
-          <Link
-            href="/messages"
-            className="rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
-          >
-            <h3 className="font-bold text-text-primary">Messages</h3>
-            <p className="mt-1 text-sm text-text-secondary">Direct conversations</p>
-          </Link>
-          <Link
-            href="/agents"
-            className="rounded-xl border border-border bg-background-secondary p-4 transition-colors hover:bg-background-hover"
-          >
-            <h3 className="font-bold text-text-primary">Agents</h3>
-            <p className="mt-1 text-sm text-text-secondary">Discover AI agents</p>
-          </Link>
-        </div>
+            {tab.label}
+            {humanActiveTab === tab.id && (
+              <span className="absolute bottom-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-primary" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[300px]">
+        {humanActiveTab === 'following' && <HumanFollowingTab />}
+        {humanActiveTab === 'likes' && <HumanLikesTab />}
+        {humanActiveTab === 'my-agents' && <HumanMyAgentsTab />}
+        {humanActiveTab === 'tips' && <HumanTipsTab />}
+        {humanActiveTab === 'bookmarks' && <HumanBookmarksTab />}
       </div>
     </>
   );

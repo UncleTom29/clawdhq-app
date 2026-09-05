@@ -35,6 +35,7 @@ import {
 } from '../services/privy-auth';
 import { LinkPreviewError, getLinkPreview } from '../services/link-preview';
 import { RankingService } from '../services/ranking';
+import { createNotification, notifyAgentOwner } from '../services/notifications';
 
 // Use runtime require so TypeScript does not follow ethers source files during server builds.
 const { Wallet } = require('ethers');
@@ -71,7 +72,6 @@ const apiUsersRoutes = createAsyncRouter();
 const nonceStore = new Map<string, { nonce: string; message: string; expiresAt: number }>();
 const claimSessionStore = new Map<string, { claimCode: string; expiresAt: number }>();
 const dmPreferenceStore = new Map<string, boolean>();
-const humanProfileStore = new Map<string, { username: string; displayName: string; avatarUrl: string | null }>();
 const adStore = new Map<string, StoredAd>();
 const manualPayoutStore: StoredManualPayout[] = [];
 
@@ -178,15 +178,43 @@ function getWalletFromRequest(req: Request): string | null {
 }
 
 function getHumanProfileDefaults(wallet: string) {
+    const clean = wallet.toLowerCase();
     return {
-        username: `observer_${wallet.slice(-6)}`,
-        displayName: `Observer ${wallet.slice(-4)}`,
+        username: `observer_${clean.slice(-6)}`,
+        displayName: `Observer ${clean.slice(-4)}`,
         avatarUrl: null,
+        bio: null,
+        bannerUrl: null,
+        twitterHandle: null,
+        website: null,
+        notifyDms: true,
+        notifyTips: true,
+        notifyMentions: true,
+        notifyAgentPosts: true,
     };
 }
 
-function getHumanProfileState(wallet: string) {
-    return humanProfileStore.get(wallet.toLowerCase()) ?? getHumanProfileDefaults(wallet);
+async function getHumanProfileState(wallet: string) {
+    const defaults = getHumanProfileDefaults(wallet);
+    const human = await prisma.humanObserver.findUnique({
+        where: { walletAddress: wallet },
+    });
+    if (!human) {
+        return defaults;
+    }
+    return {
+        username: human.username || defaults.username,
+        displayName: human.displayName || defaults.displayName,
+        avatarUrl: human.avatarUrl,
+        bio: human.bio,
+        bannerUrl: human.bannerUrl,
+        twitterHandle: human.twitterHandle,
+        website: human.website,
+        notifyDms: human.notifyDms,
+        notifyTips: human.notifyTips,
+        notifyMentions: human.notifyMentions,
+        notifyAgentPosts: human.notifyAgentPosts,
+    };
 }
 
 async function getHumanFromRequest(req: Request) {
@@ -195,9 +223,14 @@ async function getHumanFromRequest(req: Request) {
         return null;
     }
 
+    const defaults = getHumanProfileDefaults(wallet);
     return prisma.humanObserver.upsert({
         where: { walletAddress: wallet },
-        create: { walletAddress: wallet },
+        create: {
+            walletAddress: wallet,
+            username: defaults.username,
+            displayName: defaults.displayName,
+        },
         update: {},
     });
 }
@@ -907,22 +940,51 @@ router.get('/auth/me', async (req: Request, res: Response) => {
         return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
     }
 
+    const defaults = getHumanProfileDefaults(wallet);
     const human = await prisma.humanObserver.upsert({
         where: { walletAddress: wallet },
-        create: { walletAddress: wallet },
+        create: {
+            walletAddress: wallet,
+            username: defaults.username,
+            displayName: defaults.displayName,
+        },
         update: {},
     });
-    const profile = getHumanProfileState(wallet);
+
+    const followingCount = await prisma.humanFollow.count({ where: { humanId: human.id } });
 
     sendData(res, {
         id: human.id,
+        walletAddress: human.walletAddress,
+        wallet_address: human.walletAddress,
         xId: human.id,
-        xHandle: profile.username,
-        xName: profile.displayName,
-        xAvatar: profile.avatarUrl,
+        xHandle: human.username || defaults.username,
+        xName: human.displayName || defaults.displayName,
+        xAvatar: human.avatarUrl,
+        username: human.username || defaults.username,
+        displayName: human.displayName || defaults.displayName,
+        avatarUrl: human.avatarUrl,
+        avatar_url: human.avatarUrl,
+        bio: human.bio,
+        bannerUrl: human.bannerUrl,
+        banner_url: human.bannerUrl,
+        twitterHandle: human.twitterHandle,
+        twitter_handle: human.twitterHandle,
+        website: human.website,
+        notifyDms: human.notifyDms,
+        notifyTips: human.notifyTips,
+        notifyMentions: human.notifyMentions,
+        notifyAgentPosts: human.notifyAgentPosts,
+        following_count: followingCount,
+        followingCount,
+        max_following: human.subscriptionTier === 'PRO' ? 999999 : 100,
         isPro: human.subscriptionTier === 'PRO',
         proTier: human.subscriptionTier === 'PRO' ? 'PRO' : null,
+        subscription_tier: human.subscriptionTier,
+        subscriptionTier: human.subscriptionTier,
         createdAt: human.createdAt.toISOString(),
+        created_at: human.createdAt.toISOString(),
+        is_verified: true,
     });
 });
 
@@ -932,28 +994,75 @@ router.patch('/auth/me', async (req: Request, res: Response) => {
         return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
     }
 
-    const human = await prisma.humanObserver.upsert({
+    const cleanUsername = req.body?.username || req.body?.xHandle
+        ? String(req.body.username || req.body.xHandle).trim().toLowerCase().replace(/\s+/g, '_')
+        : undefined;
+
+    if (cleanUsername) {
+        const existing = await prisma.humanObserver.findFirst({
+            where: {
+                username: cleanUsername,
+                walletAddress: { not: wallet },
+            },
+        });
+        if (existing) {
+            return sendError(res, 409, 'USERNAME_TAKEN', 'This username is already taken.');
+        }
+    }
+
+    const defaults = getHumanProfileDefaults(wallet);
+    const updated = await prisma.humanObserver.upsert({
         where: { walletAddress: wallet },
-        create: { walletAddress: wallet },
-        update: {},
+        create: {
+            walletAddress: wallet,
+            username: cleanUsername || defaults.username,
+            displayName: req.body?.displayName || req.body?.xName || defaults.displayName,
+            avatarUrl: req.body?.avatarUrl || req.body?.xAvatar || null,
+            bio: req.body?.bio || null,
+            bannerUrl: req.body?.bannerUrl || null,
+            twitterHandle: req.body?.twitterHandle || null,
+            website: req.body?.website || null,
+        },
+        update: {
+            ...(cleanUsername !== undefined ? { username: cleanUsername } : {}),
+            ...(req.body?.displayName !== undefined || req.body?.xName !== undefined
+                ? { displayName: String(req.body.displayName || req.body.xName).trim() }
+                : {}),
+            ...(req.body?.avatarUrl !== undefined || req.body?.xAvatar !== undefined
+                ? { avatarUrl: (req.body.avatarUrl || req.body.xAvatar) ? String(req.body.avatarUrl || req.body.xAvatar).trim() : null }
+                : {}),
+            ...(req.body?.bio !== undefined ? { bio: req.body.bio ? String(req.body.bio).trim() : null } : {}),
+            ...(req.body?.bannerUrl !== undefined ? { bannerUrl: req.body.bannerUrl ? String(req.body.bannerUrl).trim() : null } : {}),
+            ...(req.body?.twitterHandle !== undefined ? { twitterHandle: req.body.twitterHandle ? String(req.body.twitterHandle).trim().replace(/^@/, '') : null } : {}),
+            ...(req.body?.website !== undefined ? { website: req.body.website ? String(req.body.website).trim() : null } : {}),
+            ...(req.body?.notifyDms !== undefined ? { notifyDms: Boolean(req.body.notifyDms) } : {}),
+            ...(req.body?.notifyTips !== undefined ? { notifyTips: Boolean(req.body.notifyTips) } : {}),
+            ...(req.body?.notifyMentions !== undefined ? { notifyMentions: Boolean(req.body.notifyMentions) } : {}),
+            ...(req.body?.notifyAgentPosts !== undefined ? { notifyAgentPosts: Boolean(req.body.notifyAgentPosts) } : {}),
+        },
     });
 
-    const nextProfile = {
-        username: req.body?.xHandle || req.body?.username || getHumanProfileDefaults(wallet).username,
-        displayName: req.body?.xName || req.body?.displayName || getHumanProfileDefaults(wallet).displayName,
-        avatarUrl: req.body?.xAvatar || req.body?.avatarUrl || null,
-    };
-    humanProfileStore.set(wallet.toLowerCase(), nextProfile);
-
     sendData(res, {
-        id: human.id,
-        xId: human.id,
-        xHandle: nextProfile.username,
-        xName: nextProfile.displayName,
-        xAvatar: nextProfile.avatarUrl,
-        isPro: human.subscriptionTier === 'PRO',
-        proTier: human.subscriptionTier === 'PRO' ? 'PRO' : null,
-        createdAt: human.createdAt.toISOString(),
+        id: updated.id,
+        walletAddress: updated.walletAddress,
+        xId: updated.id,
+        xHandle: updated.username || defaults.username,
+        xName: updated.displayName || defaults.displayName,
+        xAvatar: updated.avatarUrl,
+        username: updated.username || defaults.username,
+        displayName: updated.displayName || defaults.displayName,
+        avatarUrl: updated.avatarUrl,
+        bio: updated.bio,
+        bannerUrl: updated.bannerUrl,
+        twitterHandle: updated.twitterHandle,
+        website: updated.website,
+        notifyDms: updated.notifyDms,
+        notifyTips: updated.notifyTips,
+        notifyMentions: updated.notifyMentions,
+        notifyAgentPosts: updated.notifyAgentPosts,
+        isPro: updated.subscriptionTier === 'PRO',
+        proTier: updated.subscriptionTier === 'PRO' ? 'PRO' : null,
+        createdAt: updated.createdAt.toISOString(),
     });
 });
 
@@ -963,7 +1072,20 @@ router.delete('/auth/me', async (req: Request, res: Response) => {
         return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
     }
 
-    humanProfileStore.delete(wallet.toLowerCase());
+    const defaults = getHumanProfileDefaults(wallet);
+    await prisma.humanObserver.update({
+        where: { walletAddress: wallet },
+        data: {
+            username: defaults.username,
+            displayName: defaults.displayName,
+            avatarUrl: null,
+            bio: null,
+            bannerUrl: null,
+            twitterHandle: null,
+            website: null,
+        }
+    }).catch(() => undefined);
+
     res.status(204).end();
 });
 
@@ -973,29 +1095,86 @@ router.patch('/auth/human/profile', async (req: Request, res: Response) => {
         return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
     }
 
+    const cleanUsername = req.body?.username ? String(req.body.username).trim().toLowerCase().replace(/\s+/g, '_') : undefined;
+    const defaults = getHumanProfileDefaults(wallet);
+
+    if (cleanUsername) {
+        const existing = await prisma.humanObserver.findFirst({
+            where: {
+                username: cleanUsername,
+                walletAddress: { not: wallet }
+            }
+        });
+        if (existing) {
+            return sendError(res, 409, 'USERNAME_TAKEN', 'This username is already claimed by another user.');
+        }
+    }
+
     const human = await prisma.humanObserver.upsert({
         where: { walletAddress: wallet },
-        create: { walletAddress: wallet },
-        update: {},
+        create: {
+            walletAddress: wallet,
+            username: cleanUsername || defaults.username,
+            displayName: req.body?.displayName ? String(req.body.displayName).trim() : defaults.displayName,
+            avatarUrl: req.body?.avatarUrl ? String(req.body.avatarUrl).trim() : null,
+            bio: req.body?.bio ? String(req.body.bio).trim() : null,
+            bannerUrl: req.body?.bannerUrl ? String(req.body.bannerUrl).trim() : null,
+            twitterHandle: req.body?.twitterHandle ? String(req.body.twitterHandle).trim().replace(/^@/, '') : null,
+            website: req.body?.website ? String(req.body.website).trim() : null,
+            notifyDms: req.body?.notifyDms !== undefined ? Boolean(req.body.notifyDms) : true,
+            notifyTips: req.body?.notifyTips !== undefined ? Boolean(req.body.notifyTips) : true,
+            notifyMentions: req.body?.notifyMentions !== undefined ? Boolean(req.body.notifyMentions) : true,
+            notifyAgentPosts: req.body?.notifyAgentPosts !== undefined ? Boolean(req.body.notifyAgentPosts) : true,
+        },
+        update: {
+            ...(cleanUsername !== undefined ? { username: cleanUsername } : {}),
+            ...(req.body?.displayName !== undefined ? { displayName: String(req.body.displayName).trim() } : {}),
+            ...(req.body?.avatarUrl !== undefined ? { avatarUrl: req.body.avatarUrl ? String(req.body.avatarUrl).trim() : null } : {}),
+            ...(req.body?.bio !== undefined ? { bio: req.body.bio ? String(req.body.bio).trim() : null } : {}),
+            ...(req.body?.bannerUrl !== undefined ? { bannerUrl: req.body.bannerUrl ? String(req.body.bannerUrl).trim() : null } : {}),
+            ...(req.body?.twitterHandle !== undefined ? { twitterHandle: req.body.twitterHandle ? String(req.body.twitterHandle).trim().replace(/^@/, '') : null } : {}),
+            ...(req.body?.website !== undefined ? { website: req.body.website ? String(req.body.website).trim() : null } : {}),
+            ...(req.body?.notifyDms !== undefined ? { notifyDms: Boolean(req.body.notifyDms) } : {}),
+            ...(req.body?.notifyTips !== undefined ? { notifyTips: Boolean(req.body.notifyTips) } : {}),
+            ...(req.body?.notifyMentions !== undefined ? { notifyMentions: Boolean(req.body.notifyMentions) } : {}),
+            ...(req.body?.notifyAgentPosts !== undefined ? { notifyAgentPosts: Boolean(req.body.notifyAgentPosts) } : {}),
+        },
     });
-    const nextProfile = {
-        username: req.body?.username || getHumanProfileDefaults(wallet).username,
-        displayName: req.body?.displayName || getHumanProfileDefaults(wallet).displayName,
-        avatarUrl: req.body?.avatarUrl || null,
-    };
-    humanProfileStore.set(wallet.toLowerCase(), nextProfile);
+
+    const followingCount = await prisma.humanFollow.count({ where: { humanId: human.id } });
 
     sendData(res, {
         id: human.id,
         wallet_address: wallet,
-        username: nextProfile.username,
-        display_name: nextProfile.displayName,
-        avatar_url: nextProfile.avatarUrl,
+        walletAddress: wallet,
+        username: human.username || defaults.username,
+        display_name: human.displayName || defaults.displayName,
+        displayName: human.displayName || defaults.displayName,
+        avatar_url: human.avatarUrl,
+        avatarUrl: human.avatarUrl,
+        bio: human.bio,
+        banner_url: human.bannerUrl,
+        bannerUrl: human.bannerUrl,
+        twitter_handle: human.twitterHandle,
+        twitterHandle: human.twitterHandle,
+        website: human.website,
+        notify_dms: human.notifyDms,
+        notifyDms: human.notifyDms,
+        notify_tips: human.notifyTips,
+        notifyTips: human.notifyTips,
+        notify_mentions: human.notifyMentions,
+        notifyMentions: human.notifyMentions,
+        notify_agent_posts: human.notifyAgentPosts,
+        notifyAgentPosts: human.notifyAgentPosts,
         linked_wallets: [wallet],
         subscription_tier: human.subscriptionTier,
-        following_count: await prisma.humanFollow.count({ where: { humanId: human.id } }),
+        subscriptionTier: human.subscriptionTier,
+        isPro: human.subscriptionTier === 'PRO',
+        following_count: followingCount,
+        followingCount,
         max_following: human.subscriptionTier === 'PRO' ? 999999 : 100,
         created_at: human.createdAt.toISOString(),
+        createdAt: human.createdAt.toISOString(),
         is_verified: true,
     });
 });
@@ -1749,6 +1928,16 @@ router.post('/agents/:handle/follow', async (req: Request, res: Response) => {
         data: { humanId: human.id, agentId: agent.id },
     }).catch(() => undefined);
 
+    await notifyAgentOwner({
+        agentIdOrHandle: agent.id,
+        type: 'follow',
+        content: 'started following your agent',
+        actorId: human.id,
+        actorHandle: `observer_${human.walletAddress.slice(-6)}`,
+        referenceId: agent.handle,
+        skipIfOwnerWallet: human.walletAddress,
+    });
+
     await prisma.agent.update({
         where: { id: agent.id },
         data: { followerCount: { increment: 1 } },
@@ -1830,6 +2019,24 @@ router.post('/posts', async (req: Request, res: Response) => {
         where: { id: agent.id },
         data: { postCount: { increment: 1 } },
     });
+
+    // Notify mentioned agents/users
+    if (typeof post.content === 'string') {
+        const mentions = (post.content.match(/@([a-zA-Z0-9_]{1,30})/g) || []).map((m: string) => m.slice(1).toLowerCase());
+        for (const handle of [...new Set(mentions)]) {
+            if (handle !== agent.handle.toLowerCase()) {
+                notifyAgentOwner({
+                    agentIdOrHandle: handle,
+                    type: 'mention',
+                    content: post.content.slice(0, 100),
+                    actorId: agent.id,
+                    actorHandle: agent.handle,
+                    actorAvatar: agent.avatarUrl,
+                    referenceId: post.id,
+                }).catch(() => undefined);
+            }
+        }
+    }
 
     sendData(res, toPostData(post), 201);
 });
@@ -1945,9 +2152,20 @@ router.post('/posts/:id/like', async (req: Request, res: Response) => {
     }
 
     if (isNewLike) {
-        await prisma.post.update({
+        const post = await prisma.post.update({
             where: { id: req.params.id },
             data: { likeCount: { increment: 1 } },
+            select: { id: true, agentId: true, content: true },
+        });
+
+        await notifyAgentOwner({
+            agentIdOrHandle: post.agentId,
+            type: 'like',
+            content: post.content ? post.content.slice(0, 100) : 'liked your post',
+            actorId: human?.id,
+            actorHandle: human ? `observer_${human.walletAddress.slice(-6)}` : 'Anonymous',
+            referenceId: post.id,
+            skipIfOwnerWallet: human?.walletAddress,
         });
     }
 
@@ -1981,9 +2199,21 @@ router.post('/posts/:id/repost', async (req: Request, res: Response) => {
         return sendError(res, 403, 'AGENT_ONLY', 'Only agents can repost on ClawdHQ.');
     }
 
-    await prisma.post.update({
+    const post = await prisma.post.update({
         where: { id: req.params.id },
         data: { repostCount: { increment: 1 } },
+        select: { id: true, agentId: true, content: true },
+    });
+
+    await notifyAgentOwner({
+        agentIdOrHandle: post.agentId,
+        type: 'repost',
+        content: post.content ? post.content.slice(0, 100) : 'reposted your post',
+        actorId: agent.id,
+        actorHandle: agent.handle,
+        actorAvatar: agent.avatarUrl,
+        referenceId: post.id,
+        skipIfOwnerWallet: agent.ownerAddress,
     });
 
     sendData(res, { reposted: true });
@@ -2181,24 +2411,54 @@ router.get('/messages/conversations', async (req: Request, res: Response) => {
         return sendData(res, paginated([], null, false));
     }
 
+    const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 100);
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
+
+    let cursorOption = {};
+    if (cursor) {
+        cursorOption = {
+            cursor: { id: cursor },
+            skip: 1,
+        };
+    }
+
     const conversations = await prisma.conversation.findMany({
         where: { humanId: human.id },
         include: {
             messages: { orderBy: { createdAt: 'desc' }, take: 1 },
         },
         orderBy: { updatedAt: 'desc' },
-        take: 50,
+        take: limit + 1,
+        ...cursorOption,
     });
 
+    const hasMore = conversations.length > limit;
+    const items = hasMore ? conversations.slice(0, limit) : conversations;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+    const agentIds = [...new Set(items.map((conversation) => conversation.agentId))];
     const agents = await prisma.agent.findMany({
-        where: { id: { in: [...new Set(conversations.map((conversation) => conversation.agentId))] } },
+        where: { id: { in: agentIds } },
     });
     const agentMap = new Map(agents.map((agent) => [agent.id, agent]));
+
+    // Batch count unread messages per conversation for this human
+    const conversationIds = items.map((c) => c.id);
+    const unreadCounts = await prisma.directMessage.groupBy({
+        by: ['conversationId'],
+        where: {
+            conversationId: { in: conversationIds },
+            senderType: 'agent',
+            isRead: false,
+        },
+        _count: { id: true },
+    });
+    const unreadMap = new Map(unreadCounts.map((u) => [u.conversationId, u._count.id]));
 
     sendData(
         res,
         paginated(
-            conversations.map((conversation) => {
+            items.map((conversation) => {
                 const agent = agentMap.get(conversation.agentId);
                 const lastMessage = conversation.messages[0];
                 return {
@@ -2212,17 +2472,17 @@ router.get('/messages/conversations', async (req: Request, res: Response) => {
                               sender_type: lastMessage.senderType,
                               content: lastMessage.content,
                               media: [],
-                              is_read: true,
-                              read_at: null,
+                              is_read: lastMessage.senderType === 'human' ? true : lastMessage.isRead,
+                              read_at: lastMessage.readAt ? lastMessage.readAt.toISOString() : null,
                               created_at: lastMessage.createdAt.toISOString(),
                           }
                         : null,
-                    unread_count: 0,
+                    unread_count: unreadMap.get(conversation.id) || 0,
                     updated_at: conversation.updatedAt.toISOString(),
                 };
             }),
-            null,
-            false,
+            nextCursor,
+            hasMore,
         ),
     );
 });
@@ -2242,29 +2502,63 @@ router.get('/messages/conversations/:id', async (req: Request, res: Response) =>
 
     const conversation = await prisma.conversation.findUnique({
         where: { id: req.params.id },
-        include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
 
     if (!conversation || conversation.humanId !== human.id) {
         return sendError(res, 404, 'NOT_FOUND', 'Conversation not found');
     }
 
+    const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 100);
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
+
+    let cursorOption = {};
+    if (cursor) {
+        cursorOption = {
+            cursor: { id: cursor },
+            skip: 1,
+        };
+    }
+
+    const messages = await prisma.directMessage.findMany({
+        where: { conversationId: conversation.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        ...cursorOption,
+    });
+
+    const hasMore = messages.length > limit;
+    const items = hasMore ? messages.slice(0, limit) : messages;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+    // Mark unread agent messages in this conversation as read
+    await prisma.directMessage.updateMany({
+        where: {
+            conversationId: conversation.id,
+            senderType: 'agent',
+            isRead: false,
+        },
+        data: {
+            isRead: true,
+            readAt: new Date(),
+        },
+    });
+
     sendData(
         res,
         paginated(
-            conversation.messages.map((message) => ({
+            items.map((message) => ({
                 id: message.id,
                 conversation_id: conversation.id,
                 sender_id: message.senderType === 'agent' ? (message.agentId || conversation.agentId) : wallet,
                 sender_type: message.senderType,
                 content: message.content,
                 media: [],
-                is_read: true,
-                read_at: null,
+                is_read: message.senderType === 'human' ? true : message.isRead,
+                read_at: message.readAt ? message.readAt.toISOString() : null,
                 created_at: message.createdAt.toISOString(),
             })),
-            null,
-            false,
+            nextCursor,
+            hasMore,
         ),
     );
 });
@@ -2297,7 +2591,18 @@ router.post('/messages', async (req: Request, res: Response) => {
             conversationId: conversation.id,
             senderType: 'human',
             content,
+            isRead: false,
         },
+    });
+
+    await notifyAgentOwner({
+        agentIdOrHandle: agent.id,
+        type: 'dm',
+        content: message.content.slice(0, 100),
+        actorId: human.id,
+        actorHandle: `observer_${human.walletAddress.slice(-6)}`,
+        referenceId: conversation.id,
+        skipIfOwnerWallet: human.walletAddress,
     });
 
     sendData(res, {
@@ -2313,28 +2618,138 @@ router.post('/messages', async (req: Request, res: Response) => {
     }, 201);
 });
 
-router.post('/messages/conversations/:id/read', async (_req: Request, res: Response) => {
+router.post('/messages/conversations/:id/read', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+    }
+
+    const conversation = await prisma.conversation.findUnique({
+        where: { id: req.params.id },
+    });
+    if (!conversation || conversation.humanId !== human.id) {
+        return sendError(res, 404, 'NOT_FOUND', 'Conversation not found');
+    }
+
+    await prisma.directMessage.updateMany({
+        where: {
+            conversationId: conversation.id,
+            senderType: 'agent',
+            isRead: false,
+        },
+        data: {
+            isRead: true,
+            readAt: new Date(),
+        },
+    });
+
     sendData(res, { read: true });
 });
 
-router.get('/messages/unread-count', async (_req: Request, res: Response) => {
-    sendData(res, { count: 0 });
+router.get('/messages/unread-count', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendData(res, { count: 0 });
+    }
+
+    const count = await prisma.directMessage.count({
+        where: {
+            conversation: { humanId: human.id },
+            senderType: 'agent',
+            isRead: false,
+        },
+    });
+
+    sendData(res, { count });
 });
 
-router.get('/notifications', async (_req: Request, res: Response) => {
-    sendData(res, paginated([], null, false));
+router.get('/notifications', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendData(res, paginated([], null, false));
+    }
+
+    const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 50);
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
+
+    let cursorOption = {};
+    if (cursor) {
+        cursorOption = {
+            cursor: { id: cursor },
+            skip: 1,
+        };
+    }
+
+    const notifications = await prisma.notification.findMany({
+        where: { humanId: human.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        ...cursorOption,
+    });
+
+    const hasMore = notifications.length > limit;
+    const items = hasMore ? notifications.slice(0, limit) : notifications;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+    sendData(
+        res,
+        paginated(
+            items.map((n) => ({
+                id: n.id,
+                type: n.type,
+                content: n.content,
+                actorId: n.actorId || undefined,
+                actorHandle: n.actorHandle || undefined,
+                actorAvatar: n.actorAvatar || undefined,
+                referenceId: n.referenceId || undefined,
+                isRead: n.isRead,
+                createdAt: n.createdAt.toISOString(),
+            })),
+            nextCursor,
+            hasMore,
+        ),
+    );
 });
 
-router.post('/notifications/:id/read', async (_req: Request, res: Response) => {
+router.post('/notifications/:id/read', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+    }
+
+    await prisma.notification.updateMany({
+        where: { id: req.params.id, humanId: human.id },
+        data: { isRead: true },
+    });
+
     sendData(res, { read: true });
 });
 
-router.post('/notifications/read-all', async (_req: Request, res: Response) => {
+router.post('/notifications/read-all', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+    }
+
+    await prisma.notification.updateMany({
+        where: { humanId: human.id, isRead: false },
+        data: { isRead: true },
+    });
+
     sendData(res, { read: true });
 });
 
-router.get('/notifications/unread-count', async (_req: Request, res: Response) => {
-    sendData(res, { count: 0 });
+router.get('/notifications/unread-count', async (req: Request, res: Response) => {
+    const human = await getHumanFromRequest(req);
+    if (!human) {
+        return sendData(res, { count: 0 });
+    }
+
+    const count = await prisma.notification.count({
+        where: { humanId: human.id, isRead: false },
+    });
+
+    sendData(res, { count });
 });
 
 router.get('/subscription', async (req: Request, res: Response) => {
@@ -2380,11 +2795,48 @@ router.get('/humans/profile', async (req: Request, res: Response) => {
         }
 
         const { human: syncedHuman } = await syncHumanSubscriptionTier(human);
+        const defaults = getHumanProfileDefaults(syncedHuman!.walletAddress);
+        const [followingCount, ownedAgentsCount, tipsGivenCount] = await Promise.all([
+            prisma.humanFollow.count({ where: { humanId: syncedHuman!.id } }),
+            prisma.agent.count({ where: { ownerAddress: { equals: syncedHuman!.walletAddress, mode: 'insensitive' } } }),
+            prisma.tip.count({ where: { tipperWallet: { equals: syncedHuman!.walletAddress, mode: 'insensitive' } } }),
+        ]);
+
         sendData(res, {
             id: syncedHuman!.id,
             walletAddress: syncedHuman!.walletAddress,
-            username: `observer_${syncedHuman!.walletAddress.slice(-6)}`,
+            wallet_address: syncedHuman!.walletAddress,
+            username: syncedHuman!.username || defaults.username,
+            displayName: syncedHuman!.displayName || defaults.displayName,
+            display_name: syncedHuman!.displayName || defaults.displayName,
+            avatarUrl: syncedHuman!.avatarUrl,
+            avatar_url: syncedHuman!.avatarUrl,
+            bio: syncedHuman!.bio,
+            bannerUrl: syncedHuman!.bannerUrl,
+            banner_url: syncedHuman!.bannerUrl,
+            twitterHandle: syncedHuman!.twitterHandle,
+            twitter_handle: syncedHuman!.twitterHandle,
+            website: syncedHuman!.website,
+            notifyDms: syncedHuman!.notifyDms,
+            notifyTips: syncedHuman!.notifyTips,
+            notifyMentions: syncedHuman!.notifyMentions,
+            notifyAgentPosts: syncedHuman!.notifyAgentPosts,
             subscriptionTier: syncedHuman!.subscriptionTier,
+            subscription_tier: syncedHuman!.subscriptionTier,
+            isPro: syncedHuman!.subscriptionTier === 'PRO',
+            is_pro: syncedHuman!.subscriptionTier === 'PRO',
+            followingCount,
+            following_count: followingCount,
+            ownedAgentsCount,
+            owned_agents_count: ownedAgentsCount,
+            tipsGivenCount,
+            tips_given_count: tipsGivenCount,
+            maxFollowing: syncedHuman!.subscriptionTier === 'PRO' ? 999999 : 100,
+            max_following: syncedHuman!.subscriptionTier === 'PRO' ? 999999 : 100,
+            createdAt: syncedHuman!.createdAt.toISOString(),
+            created_at: syncedHuman!.createdAt.toISOString(),
+            isVerified: true,
+            is_verified: true,
         });
     } catch (error) {
         sendRouteError(res, error);
@@ -2447,6 +2899,206 @@ router.post('/humans/upgrade-pro', requirePayment(subscriptionAmountFromRequest)
                 expiresAt: record.expiresAt.toISOString(),
             },
         });
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+router.post('/humans/upgrade-test', async (req: Request, res: Response) => {
+    try {
+        const wallet = getWalletFromRequest(req);
+        if (!wallet) {
+            return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+        }
+
+        const human = await prisma.humanObserver.upsert({
+            where: { walletAddress: wallet },
+            create: { walletAddress: wallet, subscriptionTier: 'PRO' },
+            update: { subscriptionTier: 'PRO' },
+        });
+
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const mockTxRef = `test_pro_${Date.now()}_${wallet.slice(-6)}`;
+
+        await prisma.subscriptionPayment.create({
+            data: {
+                walletAddress: wallet,
+                amountUsdc: '4.990000',
+                durationMonths: 1,
+                network: 'eip155:5042002',
+                startsAt: new Date(),
+                expiresAt,
+                txRef: mockTxRef,
+            },
+        });
+
+        sendData(res, {
+            success: true,
+            subscription: {
+                id: mockTxRef,
+                tier: 'PRO',
+                expiresAt: expiresAt.toISOString(),
+            },
+        });
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+router.get('/humans/profile/:identifier', async (req: Request, res: Response) => {
+    try {
+        const identifier = req.params.identifier.replace(/^@/, '');
+        const human = await prisma.humanObserver.findFirst({
+            where: {
+                OR: [
+                    { username: { equals: identifier, mode: 'insensitive' } },
+                    { walletAddress: { equals: identifier, mode: 'insensitive' } },
+                    { id: identifier },
+                ],
+            },
+        });
+
+        if (!human) {
+            return sendError(res, 404, 'NOT_FOUND', 'Human observer not found');
+        }
+
+        const [followingCount, ownedAgents, tipsGivenCount] = await Promise.all([
+            prisma.humanFollow.count({ where: { humanId: human.id } }),
+            prisma.agent.findMany({
+                where: { ownerAddress: { equals: human.walletAddress, mode: 'insensitive' } },
+                take: 20,
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.tip.count({ where: { tipperWallet: { equals: human.walletAddress, mode: 'insensitive' } } }),
+        ]);
+
+        const defaults = getHumanProfileDefaults(human.walletAddress);
+
+        sendData(res, {
+            id: human.id,
+            walletAddress: human.walletAddress,
+            wallet_address: human.walletAddress,
+            username: human.username || defaults.username,
+            displayName: human.displayName || defaults.displayName,
+            display_name: human.displayName || defaults.displayName,
+            avatarUrl: human.avatarUrl,
+            avatar_url: human.avatarUrl,
+            bio: human.bio,
+            bannerUrl: human.bannerUrl,
+            banner_url: human.bannerUrl,
+            twitterHandle: human.twitterHandle,
+            twitter_handle: human.twitterHandle,
+            website: human.website,
+            subscriptionTier: human.subscriptionTier,
+            subscription_tier: human.subscriptionTier,
+            isPro: human.subscriptionTier === 'PRO',
+            is_pro: human.subscriptionTier === 'PRO',
+            followingCount,
+            following_count: followingCount,
+            ownedAgentsCount: ownedAgents.length,
+            owned_agents_count: ownedAgents.length,
+            tipsGivenCount,
+            tips_given_count: tipsGivenCount,
+            ownedAgents: ownedAgents.map(toAgentProfile),
+            owned_agents: ownedAgents.map(toAgentProfile),
+            createdAt: human.createdAt.toISOString(),
+            created_at: human.createdAt.toISOString(),
+            isAgent: false,
+            is_agent: false,
+        });
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+router.get('/humans/my-agents', async (req: Request, res: Response) => {
+    try {
+        const wallet = getWalletFromRequest(req);
+        if (!wallet) {
+            return sendError(res, 401, 'UNAUTHORIZED', 'Wallet authentication required');
+        }
+
+        const agents = await prisma.agent.findMany({
+            where: {
+                ownerAddress: { equals: wallet, mode: 'insensitive' },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        sendData(res, {
+            agents: agents.map(toAgentProfile),
+            total: agents.length,
+        });
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+router.get('/humans/likes', async (req: Request, res: Response) => {
+    try {
+        const human = await getHumanFromRequest(req);
+        if (!human) {
+            return sendData(res, paginated([], null, false));
+        }
+
+        const interactions = await prisma.interaction.findMany({
+            where: {
+                humanId: human.id,
+                type: 'like',
+            },
+            include: {
+                post: {
+                    include: {
+                        agent: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 40,
+        });
+
+        const posts = interactions
+            .filter((i) => i.post && i.post.agent)
+            .map((i) => toPostData(i.post));
+
+        sendData(res, paginated(posts, null, false));
+    } catch (error) {
+        sendRouteError(res, error);
+    }
+});
+
+router.get('/humans/tips-given', async (req: Request, res: Response) => {
+    try {
+        const wallet = getWalletFromRequest(req);
+        if (!wallet) {
+            return sendData(res, paginated([], null, false));
+        }
+
+        const tips = await prisma.tip.findMany({
+            where: {
+                tipperWallet: { equals: wallet, mode: 'insensitive' },
+            },
+            include: {
+                agent: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+        });
+
+        sendData(
+            res,
+            paginated(
+                tips.map((tip) => ({
+                    id: tip.id,
+                    amount_usd: Number(tip.amountUsd),
+                    tx_signature: tip.txSignature,
+                    created_at: tip.createdAt.toISOString(),
+                    agent: toAgentProfile(tip.agent),
+                })),
+                null,
+                false,
+            ),
+        );
     } catch (error) {
         sendRouteError(res, error);
     }
@@ -2559,7 +3211,18 @@ router.post('/humans/dm/send', async (req: Request, res: Response) => {
             conversationId: conversation.id,
             senderType: 'human',
             content,
+            isRead: false,
         },
+    });
+
+    await notifyAgentOwner({
+        agentIdOrHandle: agent.id,
+        type: 'dm',
+        content: message.content.slice(0, 100),
+        actorId: human.id,
+        actorHandle: `observer_${human.walletAddress.slice(-6)}`,
+        referenceId: conversation.id,
+        skipIfOwnerWallet: human.walletAddress,
     });
 
     sendData(res, {
@@ -2680,6 +3343,22 @@ router.post('/tips/send', requirePayment((req) => Number(req.body?.amount_usd ||
         }
 
         const { tip } = await recordSettledTip(agent, payment);
+
+        const tipper = payment.payer
+            ? await prisma.humanObserver.findUnique({ where: { walletAddress: payment.payer } })
+            : null;
+        const tipperHandle = tipper?.username || (payment.payer ? `observer_${payment.payer.slice(-6)}` : 'Anonymous');
+        const tipperName = tipper?.displayName || tipperHandle;
+
+        await notifyAgentOwner({
+            agentIdOrHandle: agent.id,
+            type: 'tip',
+            content: `${tipperName} sent a tip of $${microUsdcToUsd(payment.amount)}`,
+            actorHandle: tipperHandle,
+            actorId: tipper?.id,
+            referenceId: tip.id,
+            skipIfOwnerWallet: payment.payer,
+        });
 
         sendData(res, {
             success: true,

@@ -6,6 +6,7 @@ import {
     recordSettledTip,
     requirePayment,
 } from '../services/nanopayments';
+import { notifyAgentOwner } from '../services/notifications';
 
 const router = Router();
 
@@ -36,6 +37,15 @@ router.post(
             }
 
             const { tip, agentShareMicro, payoutTxId } = await recordSettledTip(agent, payment);
+
+            await notifyAgentOwner({
+                agentIdOrHandle: agent.id,
+                type: 'tip',
+                content: `$${microUsdcToUsd(payment.amount)}`,
+                actorHandle: payment.payer ? `observer_${payment.payer.slice(-6)}` : 'Anonymous',
+                referenceId: tip.id,
+                skipIfOwnerWallet: payment.payer,
+            });
 
             return res.json({
                 data: {

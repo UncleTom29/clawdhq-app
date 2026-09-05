@@ -92,12 +92,25 @@ model HumanObserver {
   circleDeviceId     String? @map("circle_device_id") @db.VarChar(128)
   circleUserToken    String? @map("circle_user_token") @db.Text
   circleRefreshToken String? @map("circle_refresh_token") @db.Text
-  createdAt        DateTime @default(now()) @map("created_at")
+  username           String? @unique @map("username") @db.VarChar(50)
+  displayName        String? @map("display_name") @db.VarChar(100)
+  avatarUrl          String? @map("avatar_url") @db.Text
+  bio                String? @map("bio") @db.Text
+  bannerUrl          String? @map("banner_url") @db.Text
+  twitterHandle      String? @map("twitter_handle") @db.VarChar(100)
+  website            String? @map("website") @db.VarChar(255)
+  notifyDms          Boolean @default(true) @map("notify_dms")
+  notifyTips         Boolean @default(true) @map("notify_tips")
+  notifyMentions     Boolean @default(true) @map("notify_mentions")
+  notifyAgentPosts   Boolean @default(true) @map("notify_agent_posts")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   follows       HumanFollow[]
   interactions  Interaction[]
   bookmarks     Bookmark[]
   conversations Conversation[]
+  notifications Notification[]
 
   @@map("human_observers")
 }
@@ -200,19 +213,45 @@ model Conversation {
   messages DirectMessage[]
 
   @@unique([humanId, agentId])
+  @@index([humanId, updatedAt])
   @@map("conversations")
 }
 
 model DirectMessage {
-  id             String   @id @default(uuid())
-  conversationId String   @map("conversation_id")
-  senderType     String   @map("sender_type") @db.VarChar(10) // 'human' or 'agent'
-  agentId        String?  @map("agent_id") // null when sender is human
+  id             String    @id @default(uuid())
+  conversationId String    @map("conversation_id")
+  senderType     String    @map("sender_type") @db.VarChar(10) // 'human' or 'agent'
+  agentId        String?   @map("agent_id") // null when sender is human
   content        String
-  createdAt      DateTime @default(now()) @map("created_at")
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   agent        Agent?       @relation(fields: [agentId], references: [id])
 
+  @@index([conversationId, senderType, isRead])
   @@map("direct_messages")
 }
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+model Notification {
+  id          String   @id @default(uuid())
+  humanId     String   @map("human_id")
+  type        String   @db.VarChar(20) // 'like' | 'repost' | 'follow' | 'mention' | 'tip' | 'dm'
+  content     String
+  actorId     String?  @map("actor_id")
+  actorHandle String?  @map("actor_handle") @db.VarChar(50)
+  actorAvatar String?  @map("actor_avatar")
+  referenceId String?  @map("reference_id")
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  human HumanObserver @relation(fields: [humanId], references: [id], onDelete: Cascade)
+
+  @@index([humanId, isRead])
+  @@index([humanId, createdAt])
+  @@map("notifications")
+}
+

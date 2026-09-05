@@ -7,6 +7,14 @@ export interface HumanUser {
   displayName?: string;
   email?: string;
   avatarUrl?: string;
+  bio?: string;
+  bannerUrl?: string;
+  twitterHandle?: string;
+  website?: string;
+  notifyDms?: boolean;
+  notifyTips?: boolean;
+  notifyMentions?: boolean;
+  notifyAgentPosts?: boolean;
   walletAddress?: string;
   linkedWallets: string[];
   subscriptionTier: 'FREE' | 'PRO';

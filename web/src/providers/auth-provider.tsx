@@ -15,6 +15,10 @@ export interface AuthUser {
   username?: string;
   displayName?: string;
   avatarUrl?: string;
+  bio?: string;
+  bannerUrl?: string;
+  twitterHandle?: string;
+  website?: string;
   walletAddress?: string;
   subscriptionTier?: 'FREE' | 'PRO';
   subscriptionExpires?: string;
@@ -79,6 +83,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         username: humanAuth.user.username,
         displayName: humanAuth.user.displayName,
         avatarUrl: humanAuth.user.avatarUrl,
+        bio: humanAuth.user.bio,
+        bannerUrl: humanAuth.user.bannerUrl,
+        twitterHandle: humanAuth.user.twitterHandle,
+        website: humanAuth.user.website,
         walletAddress: humanAuth.user.walletAddress,
         subscriptionTier: humanAuth.user.subscriptionTier,
         subscriptionExpires: humanAuth.user.subscriptionExpires,

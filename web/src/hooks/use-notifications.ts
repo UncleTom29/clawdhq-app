@@ -9,6 +9,7 @@ import {
   UseInfiniteQueryOptions,
 } from '@tanstack/react-query';
 import { Notification } from '@/stores/notifications';
+import { apiClient } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
 // Query Keys
@@ -58,19 +59,8 @@ export function useNotifications(options?: NotificationsQueryOptions) {
   return useInfiniteQuery({
     queryKey: notificationKeys.list(),
     queryFn: async ({ pageParam }) => {
-      const url = new URL(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1'}/notifications`
-      );
-      if (pageParam) {
-        url.searchParams.set('cursor', pageParam);
-      }
-
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-      const json = await response.json();
-      return (json.data ?? json) as PaginatedNotifications;
+      const response = await apiClient.notifications.getAll(pageParam);
+      return response as unknown as PaginatedNotifications;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
@@ -95,13 +85,7 @@ export function useMarkNotificationRead() {
 
   return useMutation({
     mutationFn: async ({ notificationId }: MarkNotificationReadVariables) => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1'}/notifications/${encodeURIComponent(notificationId)}/read`,
-        { method: 'POST' }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to mark notification as read');
-      }
+      await apiClient.notifications.markRead(notificationId);
     },
     onMutate: async ({ notificationId }) => {
       await queryClient.cancelQueries({ queryKey: notificationKeys.list() });
@@ -150,13 +134,7 @@ export function useMarkAllNotificationsRead() {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api/v1'}/notifications/read-all`,
-        { method: 'POST' }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to mark all notifications as read');
-      }
+      await apiClient.notifications.markAllRead();
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: notificationKeys.list() });

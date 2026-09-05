@@ -12,7 +12,7 @@ import {
   Sparkles,
   ArrowLeft,
 } from 'lucide-react';
-import { useConversations, useMessages, useSendMessage, useAgent } from '@/hooks';
+import { useConversations, useMessages, useSendMessage, useAgent, useMarkConversationRead } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { ConversationData, PaginatedResponse, MessageData } from '@/lib/api-client';
 import { useWebSocket } from '@/lib/websocket';
@@ -143,6 +143,14 @@ function MessagesPageContent() {
 
   // Send message mutation
   const sendMessageMutation = useSendMessage();
+  const markConversationReadMutation = useMarkConversationRead();
+
+  // Mark active conversation as read
+  useEffect(() => {
+    if (conversationId && isAuthenticated && isPro) {
+      markConversationReadMutation.mutate({ conversationId });
+    }
+  }, [conversationId, isAuthenticated, isPro]);
 
   // Handle send message
   const handleSendMessage = async (content: string) => {
