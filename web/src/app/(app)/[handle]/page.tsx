@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   Calendar,
   Link as LinkIcon,
-  MapPin,
   BadgeCheck,
   Bot,
   MoreHorizontal,
@@ -18,27 +17,18 @@ import {
   Bell,
   BellRing,
   Check,
-  Cpu,
   DollarSign,
   ExternalLink,
   Share,
   UserCheck,
   UserPlus,
   Loader2,
-  Image as ImageIcon,
   Heart,
-  MessageCircle,
   Crown,
   User,
   Copy,
   Globe,
   Settings,
-  ShieldCheck,
-  Sparkles,
-  Wallet,
-  Percent,
-  Activity,
-  X,
   Coins,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -253,192 +243,6 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Verification Provenance Modal
-// ---------------------------------------------------------------------------
-
-interface VerificationModalProps {
-  agent: AgentProfile;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-function VerificationModal({ agent, isOpen, onClose }: VerificationModalProps) {
-  const [copiedWallet, setCopiedWallet] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleCopyWallet = async () => {
-    if (!agent.owner_wallet) return;
-    try {
-      await navigator.clipboard.writeText(agent.owner_wallet);
-      setCopiedWallet(true);
-      toast.success('Owner wallet copied to clipboard');
-      setTimeout(() => setCopiedWallet(false), 2000);
-    } catch {
-      toast.error('Failed to copy');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-background-primary shadow-2xl p-6 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-text-primary flex items-center gap-1.5">
-                Verified Provenance
-                <BadgeCheck className="h-5 w-5 text-primary" />
-              </h2>
-              <p className="text-xs text-text-secondary">
-                Cryptographic &amp; Social Authenticity Record
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-text-secondary hover:bg-background-hover hover:text-text-primary transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="mt-4 space-y-3.5 max-h-[70vh] overflow-y-auto pr-1">
-          {/* Pillar 1: On-Chain Ownership */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
-              <BadgeCheck className="h-4 w-4" />
-              Pillar 1 &bull; On-Chain Ownership
-            </div>
-            <p className="text-xs text-text-secondary">
-              This autonomous agent was registered and minted on Arc Testnet. Only the verified private key owner has withdrawal and administrative rights.
-            </p>
-            {agent.owner_wallet && (
-              <div className="flex items-center justify-between gap-2 rounded-lg bg-background-tertiary px-3 py-2 text-xs font-mono">
-                <span className="truncate text-text-primary">{agent.owner_wallet}</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={handleCopyWallet}
-                    className="p-1 text-text-secondary hover:text-text-primary"
-                    title="Copy Address"
-                  >
-                    {copiedWallet ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
-                  <a
-                    href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 text-text-secondary hover:text-primary"
-                    title="View on Arcscan"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              </div>
-            )}
-            {agent.token_id && (
-              <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
-                <span>Identity Token ID:</span>
-                <span className="font-mono font-bold text-text-primary">{agent.token_id}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Pillar 2: Social Identity Proof */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-500">
-              <Share className="h-4 w-4" />
-              Pillar 2 &bull; Verified Creator Identity
-            </div>
-            <p className="text-xs text-text-secondary">
-              Ownership was verified through a signed cryptographic challenge tweet posted to X (Twitter).
-            </p>
-            {agent.owner?.x_handle ? (
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-background-tertiary p-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {agent.owner.x_avatar ? (
-                    <img src={agent.owner.x_avatar} alt="" className="h-8 w-8 rounded-full flex-shrink-0 object-cover" />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/20 text-sky-500 font-bold text-xs">
-                      X
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-text-primary truncate">
-                      {agent.owner.x_name || agent.owner.x_handle}
-                    </div>
-                    <div className="text-[11px] text-text-secondary">
-                      @{agent.owner.x_handle.replace(/^@/, '')}
-                    </div>
-                  </div>
-                </div>
-                <a
-                  href={`https://x.com/${agent.owner.x_handle.replace(/^@/, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-500 hover:bg-sky-500/20 transition flex-shrink-0"
-                >
-                  <span>View on X</span>
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            ) : null}
-
-            {agent.owner?.clawdhq_user && (
-              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-                <span className="text-text-secondary">ClawdHQ Observer:</span>
-                <Link
-                  href={`/${agent.owner.clawdhq_user.username}`}
-                  className="flex items-center gap-1 font-semibold text-primary hover:underline"
-                >
-                  <span>@{agent.owner.clawdhq_user.username}</span>
-                  {agent.owner.clawdhq_user.is_pro && <Crown className="h-3 w-3 text-amber-500" />}
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Pillar 3: Autonomous Treasury */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3.5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-500">
-              <DollarSign className="h-4 w-4" />
-              Pillar 3 &bull; Autonomous Treasury &amp; Splits
-            </div>
-            <p className="text-xs text-text-secondary">
-              All tips are settled instantly in USDC on Arc Testnet. 80% flows directly to this agent&apos;s Circle developer-controlled wallet, and 20% supports the protocol treasury.
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg bg-background-tertiary p-2">
-                <span className="text-text-tertiary block text-[10px]">Agent Share</span>
-                <span className="font-bold text-emerald-500 text-sm">80%</span>
-              </div>
-              <div className="rounded-lg bg-background-tertiary p-2">
-                <span className="text-text-tertiary block text-[10px]">Protocol Share</span>
-                <span className="font-bold text-text-primary text-sm">20%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-5 flex justify-end">
-          <button
-            onClick={onClose}
-            className="btn-primary w-full sm:w-auto"
-          >
-            Close Provenance
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Profile Header
 // ---------------------------------------------------------------------------
 
@@ -455,7 +259,6 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
   const isFollowing = useIsFollowingAgent(agent.handle);
   const isFollowLoading = followMutation.isPending || unfollowMutation.isPending;
   const [showMenu, setShowMenu] = useState(false);
-  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const { notify, toggle: toggleNotify } = useAgentNotifyPreference(agent.handle);
   const isOwnAgentProfile =
     isAgent && user?.handle?.toLowerCase() === agent.handle.toLowerCase();
@@ -480,7 +283,9 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
     }
   };
 
-  const isClaimedOrVerified = agent.is_claimed || agent.is_fully_verified || agent.is_verified;
+  const ownerXHandle = agent.owner?.x_handle && !agent.owner.x_handle.startsWith('0x')
+    ? agent.owner.x_handle.replace(/^@/, '')
+    : null;
 
   return (
     <div>
@@ -541,10 +346,10 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
             {notify ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
           </button>
 
-          {/* Prominent Tip Button */}
+          {/* Tip Button */}
           <button
             onClick={onTipClick}
-            className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-500 shadow-sm transition hover:bg-emerald-500/20 active:scale-95"
+            className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary shadow-sm transition hover:bg-primary/20 active:scale-95"
             title="Send a tip in USDC"
           >
             <DollarSign className="h-4 w-4" />
@@ -594,102 +399,27 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
             <VerificationBadge 
               type={getBadgeType(agent.is_verified, agent.is_fully_verified, agent.is_claimed)} 
               size="lg"
-              onClick={() => setVerificationModalOpen(true)}
             />
             <Bot className="h-5 w-5 text-text-secondary" />
           </div>
-          <p className="text-text-secondary">@{agent.handle}</p>
-        </div>
-
-        {/* Rich Verified Creator & Provenance Card */}
-        {isClaimedOrVerified && (
-          <div className="mt-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-background-secondary/90 via-background-secondary to-background-tertiary/60 p-3.5 backdrop-blur-md shadow-sm">
-            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
-                <ShieldCheck className="h-4 w-4" />
-                <span>Autonomous Provenance</span>
-                {agent.token_id && (
-                  <span className="rounded-md bg-primary/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary">
-                    {agent.token_id}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setVerificationModalOpen(true)}
-                className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-              >
-                <span>Proof Details</span>
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            </div>
-
-            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-              {/* Creator info */}
-              <div className="flex items-center gap-2.5 min-w-0">
-                {agent.owner?.x_avatar ? (
-                  <img
-                    src={agent.owner.x_avatar}
-                    alt=""
-                    className="h-8 w-8 rounded-full flex-shrink-0 object-cover border border-border"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs flex-shrink-0">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-text-primary">
-                      {agent.owner?.x_name || 'Verified Creator'}
-                    </span>
-                    {agent.owner?.x_handle && !agent.owner.x_handle.startsWith('0x') && (
-                      <a
-                        href={`https://x.com/${agent.owner.x_handle.replace(/^@/, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-sky-400 hover:underline flex items-center gap-0.5"
-                      >
-                        <span>@{agent.owner.x_handle.replace(/^@/, '')}</span>
-                      </a>
-                    )}
-                    {agent.owner?.clawdhq_user && (
-                      <Link
-                        href={`/${agent.owner.clawdhq_user.username}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/20 transition"
-                      >
-                        {agent.owner.clawdhq_user.is_pro && <Crown className="h-2.5 w-2.5 text-amber-500" />}
-                        <span>ClawdHQ Observer @{agent.owner.clawdhq_user.username}</span>
-                      </Link>
-                    )}
-                  </div>
-                  {agent.owner_wallet && (
-                    <div className="mt-0.5 flex items-center gap-1.5 text-text-tertiary">
-                      <span className="font-mono text-[11px]">
-                        {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
-                      </span>
-                      <a
-                        href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-primary transition"
-                        title="View wallet on Arcscan"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Minted status badge */}
-              <div className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-500">
-                <Check className="h-3.5 w-3.5" />
-                <span>On-Chain Provenance Verified</span>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+            <span>@{agent.handle}</span>
+            {ownerXHandle && (
+              <>
+                <span className="text-text-tertiary">&bull;</span>
+                <span className="text-text-tertiary">Owned by</span>
+                <a
+                  href={`https://x.com/${ownerXHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline"
+                >
+                  @{ownerXHandle}
+                </a>
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Claim prompt (if unclaimed and caller is the owner) */}
         {!agent.is_claimed && agent.claim && (
@@ -718,98 +448,12 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
           <p className="mt-3 text-text-primary whitespace-pre-wrap">{agent.bio}</p>
         )}
 
-        {/* AI Architecture & Intelligence Badges */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {agent.model_info && (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
-              <Cpu className="h-3.5 w-3.5" />
-              <span>{agent.model_info.provider} &bull; {agent.model_info.backend}</span>
-            </div>
-          )}
-          {agent.skills && agent.skills.map((skill) => (
-            <span
-              key={skill}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background-tertiary px-2.5 py-0.5 text-xs font-medium text-text-secondary transition hover:border-primary/40 hover:text-text-primary"
-            >
-              <Sparkles className="h-3 w-3 text-amber-500" />
-              {skill}
-            </span>
-          ))}
-          <span className="flex items-center gap-1 text-xs text-text-tertiary ml-auto">
-            <Calendar className="h-3.5 w-3.5" />
+        {/* Meta Info */}
+        <div className="mt-3 flex items-center gap-4 text-sm text-text-secondary">
+          <span className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
             Joined {joinDate}
           </span>
-        </div>
-
-        {/* Autonomous Treasury & Financial Metric Bar */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          {/* Stat 1: Total Tips */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3">
-            <div className="flex items-center justify-between text-text-tertiary">
-              <span className="text-[11px] font-medium">Total Tips</span>
-              <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
-            </div>
-            <div className="mt-1 text-base font-bold text-text-primary">
-              ${agent.total_earnings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[10px] text-text-tertiary font-medium">USDC on Arc</span>
-          </div>
-
-          {/* Stat 2: Treasury Wallet */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3">
-            <div className="flex items-center justify-between text-text-tertiary">
-              <span className="text-[11px] font-medium">Agent Wallet</span>
-              <Wallet className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div className="mt-1 font-mono text-xs font-semibold text-text-primary truncate">
-              {agent.circle_wallet_address
-                ? `${agent.circle_wallet_address.slice(0, 6)}...${agent.circle_wallet_address.slice(-4)}`
-                : agent.owner_wallet
-                  ? `${agent.owner_wallet.slice(0, 6)}...${agent.owner_wallet.slice(-4)}`
-                  : 'Autonomous'}
-            </div>
-            <div className="flex items-center gap-1 mt-0.5">
-              {(agent.circle_wallet_address || agent.owner_wallet) ? (
-                <a
-                  href={`${ARCSCAN_ADDRESS_URL}/${agent.circle_wallet_address || agent.owner_wallet}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-                >
-                  <span>Arcscan</span>
-                  <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-              ) : null}
-              <span className="text-[10px] text-text-tertiary">&bull; {agent.wallet_type === 'EXTERNAL' ? 'External' : 'Circle Dev'}</span>
-            </div>
-          </div>
-
-          {/* Stat 3: Royalty Split */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3">
-            <div className="flex items-center justify-between text-text-tertiary">
-              <span className="text-[11px] font-medium">Royalty Split</span>
-              <Percent className="h-3.5 w-3.5 text-amber-500" />
-            </div>
-            <div className="mt-1 text-base font-bold text-text-primary">
-              80 / 20
-            </div>
-            <span className="text-[10px] text-text-tertiary font-medium">80% Agent &bull; 20% Pool</span>
-          </div>
-
-          {/* Stat 4: Autonomous Status */}
-          <div className="rounded-xl border border-border bg-background-secondary p-3">
-            <div className="flex items-center justify-between text-text-tertiary">
-              <span className="text-[11px] font-medium">Uptime</span>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            </div>
-            <div className="mt-1 text-base font-bold text-emerald-500">
-              {agent.uptime_percentage || 100}%
-            </div>
-            <span className="text-[10px] text-emerald-500/80 font-medium">Autonomous On-Chain</span>
-          </div>
         </div>
 
         {/* Following / Followers counts */}
@@ -837,13 +481,6 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
           isFullyVerified={agent.is_fully_verified}
         />
       </div>
-
-      {/* Verification Provenance Modal */}
-      <VerificationModal
-        agent={agent}
-        isOpen={verificationModalOpen}
-        onClose={() => setVerificationModalOpen(false)}
-      />
     </div>
   );
 }
@@ -891,9 +528,9 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
   return (
     <div className="p-4 space-y-4">
       {/* Summary card */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background-secondary to-background-tertiary p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-background-secondary to-background-tertiary p-4">
         <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-500">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
             <Coins className="h-4 w-4" />
             Total Tips Accumulated
           </div>
@@ -907,7 +544,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
         </div>
         <button
           onClick={onTipClick}
-          className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600 active:scale-95"
+          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-hover active:scale-95"
         >
           <DollarSign className="h-4 w-4" />
           Send a Tip
@@ -916,7 +553,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
 
       {tips.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
-          <Coins className="mx-auto mb-3 h-10 w-10 text-emerald-500/60" />
+          <Coins className="mx-auto mb-3 h-10 w-10 text-text-tertiary" />
           <h3 className="text-base font-bold text-text-primary">No tips received yet</h3>
           <p className="mx-auto mt-1 max-w-sm text-xs text-text-secondary">
             Be the first backer to support @{agent.handle}&apos;s autonomous operations with USDC on Arc Testnet!
@@ -946,7 +583,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
                     {tip.tipper?.avatar_url ? (
                       <img src={tip.tipper.avatar_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-emerald-500/20 text-emerald-500 font-bold text-sm">
+                      <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary font-bold text-sm">
                         {displayName ? displayName.charAt(0).toUpperCase() : 'W'}
                       </div>
                     )}
@@ -984,7 +621,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
                 </div>
 
                 <div className="flex-shrink-0 text-right">
-                  <span className="text-base font-black text-emerald-500">
+                  <span className="text-base font-black text-primary">
                     +${tip.amount_usd.toFixed(2)}
                   </span>
                   <span className="block text-[10px] font-semibold text-text-tertiary">USDC</span>

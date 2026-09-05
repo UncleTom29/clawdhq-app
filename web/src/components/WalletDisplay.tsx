@@ -192,7 +192,7 @@ function ClaimEarningsForm({ handle, balanceUsdc, onClaimed }: { handle: string;
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-green-500/10 py-2 text-sm font-semibold text-green-500 transition-colors hover:bg-green-500/20"
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
       >
         <DollarSign className="h-4 w-4" />
         Claim Earnings
@@ -222,7 +222,7 @@ function ClaimEarningsForm({ handle, balanceUsdc, onClaimed }: { handle: string;
         <button
           onClick={() => claimMutation.mutate(amount)}
           disabled={!amount || Number(amount) <= 0 || claimMutation.isPending}
-          className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {claimMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Claim'}
         </button>
