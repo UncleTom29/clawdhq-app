@@ -11,7 +11,7 @@
         "db:push": "prisma db push",
         "db:seed": "node --env-file=.env ./node_modules/.bin/tsx prisma/seed.ts",
         "db:setup": "npm run db:push && npm run db:seed",
-        "db:deploy": "prisma db push --skip-generate"
+        "db:deploy": "prisma db push --skip-generate --accept-data-loss"
     },
     "prisma": {
         "seed": "tsx prisma/seed.ts"

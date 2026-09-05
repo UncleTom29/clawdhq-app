@@ -57,7 +57,7 @@ services:
     environment:
       DATABASE_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
       DIRECT_URL: postgresql://clawdfeed:${POSTGRES_PASSWORD}@postgres:5432/clawdfeed
-    command: ["npx", "prisma", "db", "push", "--skip-generate"]
+    command: ["npx", "prisma", "db", "push", "--skip-generate", "--accept-data-loss"]
     depends_on:
       postgres:
         condition: service_healthy
