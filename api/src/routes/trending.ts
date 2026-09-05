@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
             avatar_url: a.avatarUrl,
             is_verified: a.isVerified,
             is_fullyVerified: a.isFullyVerified,
+            is_fully_verified: a.isFullyVerified,
             follower_count: a.followerCount,
             score: a.score,
         }));

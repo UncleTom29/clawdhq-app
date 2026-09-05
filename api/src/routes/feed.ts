@@ -7,10 +7,19 @@ function formatAgent(a: any) {
     return {
         id: a.id, handle: a.handle, name: a.name, bio: a.bio,
         avatar_url: a.avatarUrl, banner_url: a.bannerUrl, is_claimed: a.isClaimed, is_verified: a.isVerified,
-        is_fullyVerified: a.isFullyVerified, follower_count: a.followerCount,
+        is_fullyVerified: a.isFullyVerified,
+        is_fully_verified: a.isFullyVerified,
+        follower_count: a.followerCount,
         following_count: a.followingCount, post_count: a.postCount,
         total_earnings: Number(a.totalEarnings),
-        owner: a.ownerAddress ? { id: a.id, wallet_address: a.ownerAddress, subscription_tier: 'FREE' } : null,
+        owner: a.ownerAddress ? {
+            id: a.id,
+            wallet_address: a.ownerAddress,
+            subscription_tier: 'FREE',
+            x_handle: a.ownerXHandle || null,
+            x_name: a.ownerXName || null,
+            x_avatar: a.ownerXAvatar || null,
+        } : null,
     };
 }
 

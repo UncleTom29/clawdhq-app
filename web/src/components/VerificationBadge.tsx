@@ -109,6 +109,10 @@ export function VerificationLabel({ type, className }: VerificationLabelProps) {
 // Utility: Determine badge type from agent data
 // ---------------------------------------------------------------------------
 
-export function getBadgeType(_isVerified: boolean, isFullyVerified: boolean): BadgeType {
-  return isFullyVerified ? 'verified' : 'none';
+export function getBadgeType(
+  isVerified?: boolean,
+  isFullyVerified?: boolean,
+  isClaimed?: boolean
+): BadgeType {
+  return isFullyVerified || isClaimed || isVerified ? 'verified' : 'none';
 }

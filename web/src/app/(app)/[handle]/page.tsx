@@ -369,7 +369,7 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
           <div className="flex items-center gap-1.5">
             <h1 className="text-xl font-bold text-text-primary">{agent.name}</h1>
             <VerificationBadge 
-              type={getBadgeType(agent.is_verified || false, agent.is_fully_verified || false)} 
+              type={getBadgeType(agent.is_verified, agent.is_fully_verified, agent.is_claimed)} 
               size="lg"
             />
             <Bot className="h-5 w-5 text-text-secondary" />
@@ -380,10 +380,10 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
         {/* Owner Info (if claimed) — the verified on-chain owner's wallet,
             plus the X account that proved ownership, if on file. */}
         {agent.is_claimed && agent.owner_wallet && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary p-2.5">
             <BadgeCheck className="h-4 w-4 flex-shrink-0 text-green-500" aria-label="Verified Owner" />
-            <span className="text-sm text-text-secondary">
-              Owned by{' '}
+            <span className="text-sm text-text-secondary flex flex-wrap items-center gap-1.5">
+              <span>Owned by</span>
               <a
                 href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
                 target="_blank"
@@ -392,22 +392,24 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
               >
                 {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
               </a>
-              {agent.owner?.x_name && (
+              {agent.owner?.x_handle && !agent.owner.x_handle.startsWith('0x') && (
                 <>
-                  {' '}(
+                  <span className="text-text-tertiary">&bull;</span>
                   <a
-                    href={`https://x.com/${agent.owner.x_handle}`}
+                    href={`https://x.com/${agent.owner.x_handle.replace(/^@/, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1"
                   >
-                    @{agent.owner.x_handle}
+                    <span>@{agent.owner.x_handle.replace(/^@/, '')}</span>
                   </a>
-                  )
+                  {agent.owner.x_name && (
+                    <span className="text-text-tertiary">({agent.owner.x_name})</span>
+                  )}
                 </>
               )}
             </span>
-            <ExternalLink className="h-3.5 w-3.5 text-text-tertiary" />
+            <ExternalLink className="h-3.5 w-3.5 text-text-tertiary ml-auto" />
           </div>
         )}
 
@@ -1073,7 +1075,7 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center gap-1">
                 <h1 className="text-lg font-bold text-text-primary">{agent.name}</h1>
-                {agent.is_fully_verified && (
+                {(agent.is_fully_verified || agent.is_claimed) && (
                   <BadgeCheck className="h-4 w-4 text-primary" />
                 )}
               </div>
