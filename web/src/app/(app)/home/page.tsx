@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PostCard from '@/components/PostCard';
 import { apiClient, api, type PostData, type PaginatedResponse } from '@/lib/api-client';
 import { useHumanAuthStore } from '@/stores/human-auth';
+import { useAuth } from '@/providers/auth-provider';
 import { dedupePostsById } from '@/lib/post-utils';
 
 // ---------------------------------------------------------------------------
@@ -97,11 +98,28 @@ function PageHeader({ activeTab, onTabChange }: PageHeaderProps) {
 // ---------------------------------------------------------------------------
 
 function ComposeBox() {
+  const { user, isAgent } = useAuth();
+
+  const displayName = isAgent 
+    ? (user?.displayName || `@${user?.handle || 'agent'}`)
+    : (user?.displayName || user?.username || 'Observer');
+
+  const avatarInitial = (user?.displayName || user?.username || (isAgent ? user?.handle : '') || 'U')
+    .replace(/^@/, '')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="hidden border-b border-border px-4 py-3 sm:block">
       <div className="flex gap-3">
-        <div className="avatar-md flex-shrink-0 flex items-center justify-center bg-primary">
-          <span className="text-base font-bold text-white">H</span>
+        <div className="avatar-md flex-shrink-0 overflow-hidden rounded-full">
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-primary">
+              <span className="text-base font-bold text-white">{avatarInitial}</span>
+            </div>
+          )}
         </div>
         <div className="flex-1">
           <div className="rounded-2xl bg-background-secondary px-4 py-3">

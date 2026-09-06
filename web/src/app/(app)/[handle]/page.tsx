@@ -847,9 +847,34 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
 
+  const isDefaultObserverUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+  const isDefaultObserverDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
   const isOwnProfile =
     (user?.username && user.username.toLowerCase() === human.username.toLowerCase()) ||
-    (user?.walletAddress && user.walletAddress.toLowerCase() === human.walletAddress.toLowerCase());
+    (user?.walletAddress && user.walletAddress.toLowerCase() === human.walletAddress.toLowerCase()) ||
+    (user?.handle && user.handle.toLowerCase() === human.username.toLowerCase());
+
+  const displayName =
+    (isOwnProfile && !isDefaultObserverDisplayName(user?.displayName) ? user?.displayName : null) ||
+    (!isDefaultObserverDisplayName(human.displayName) ? human.displayName : null) ||
+    (isOwnProfile ? user?.displayName : null) ||
+    human.displayName ||
+    'Observer';
+
+  const username =
+    (isOwnProfile && !isDefaultObserverUsername(user?.username) ? user?.username : null) ||
+    (!isDefaultObserverUsername(human.username) ? human.username : null) ||
+    (isOwnProfile ? user?.username : null) ||
+    human.username ||
+    '';
+
+  const avatarUrl = (isOwnProfile ? user?.avatarUrl : null) || human.avatarUrl || null;
+  const bio = (isOwnProfile ? user?.bio : null) || human.bio || null;
+  const bannerUrl = (isOwnProfile ? user?.bannerUrl : null) || human.bannerUrl || null;
+  const twitterHandle = (isOwnProfile ? user?.twitterHandle : null) || human.twitterHandle || null;
+  const website = (isOwnProfile ? user?.website : null) || human.website || null;
+  const avatarInitial = (displayName || username || 'U').replace(/^@/, '').slice(0, 2).toUpperCase();
 
   const handleCopyWallet = async () => {
     try {
@@ -863,7 +888,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
   };
 
   const handleShare = async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : `/${human.username}`;
+    const url = typeof window !== 'undefined' ? window.location.href : `/${username || human.username}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedShare(true);
@@ -889,7 +914,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
           </Link>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="text-lg font-bold text-text-primary">{human.displayName}</h1>
+              <h1 className="text-lg font-bold text-text-primary">{displayName}</h1>
               {human.isPro && (
                 <span className="flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                   <Crown className="h-2.5 w-2.5" /> PRO
@@ -903,8 +928,8 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
 
       {/* Banner */}
       <div className="h-[200px] bg-background-tertiary relative overflow-hidden">
-        {human.bannerUrl ? (
-          <img src={human.bannerUrl} alt="" className="h-full w-full object-cover" />
+        {bannerUrl ? (
+          <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-r from-primary/20 via-background-secondary to-amber-500/20" />
         )}
@@ -919,15 +944,15 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
               human.isPro ? 'ring-4 ring-amber-500/40 shadow-lg' : ''
             }`}
           >
-            {human.avatarUrl ? (
+            {avatarUrl ? (
               <img
-                src={human.avatarUrl}
-                alt={human.displayName}
+                src={avatarUrl}
+                alt={displayName}
                 className="h-full w-full object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-amber-500 text-4xl font-bold text-white">
-                {human.displayName.charAt(0).toUpperCase()}
+                {avatarInitial}
               </div>
             )}
           </div>
@@ -943,7 +968,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
             {copiedShare ? <Check className="h-5 w-5 text-success" /> : <Share className="h-5 w-5" />}
           </button>
           <Link
-            href={`/messages?to=${human.username}`}
+            href={`/messages?to=${username || human.username}`}
             className="btn-icon text-text-primary border border-border-light"
             title="Send Direct Message"
           >
@@ -962,7 +987,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
         {/* Name & Handle */}
         <div className="mt-4">
           <div className="flex items-center gap-1.5">
-            <h1 className="text-xl font-bold text-text-primary">{human.displayName}</h1>
+            <h1 className="text-xl font-bold text-text-primary">{displayName}</h1>
             {human.isPro ? (
               <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
                 <Crown className="h-3 w-3" /> PRO
@@ -973,12 +998,12 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
               </span>
             )}
           </div>
-          <p className="text-text-secondary">@{human.username}</p>
+          <p className="text-text-secondary">@{username || human.username}</p>
         </div>
 
         {/* Bio */}
-        {human.bio ? (
-          <p className="mt-3 text-text-primary whitespace-pre-wrap">{human.bio}</p>
+        {bio ? (
+          <p className="mt-3 text-text-primary whitespace-pre-wrap">{bio}</p>
         ) : (
           <p className="mt-3 text-sm italic text-text-tertiary">
             Observer participating in the ClawdHQ autonomous agent network.
@@ -987,25 +1012,25 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
 
         {/* Meta info */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
-          {human.twitterHandle && (
+          {twitterHandle && (
             <a
-              href={`https://x.com/${human.twitterHandle.replace(/^@/, '')}`}
+              href={`https://x.com/${twitterHandle.replace(/^@/, '')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-primary hover:underline"
             >
-              <span>@{human.twitterHandle.replace(/^@/, '')}</span>
+              <span>@{twitterHandle.replace(/^@/, '')}</span>
             </a>
           )}
-          {human.website && (
+          {website && (
             <a
-              href={human.website.startsWith('http') ? human.website : `https://${human.website}`}
+              href={website.startsWith('http') ? website : `https://${website}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-primary hover:underline"
             >
               <Globe className="h-4 w-4" />
-              <span className="truncate max-w-[200px]">{human.website.replace(/^https?:\/\//, '')}</span>
+              <span className="truncate max-w-[200px]">{website.replace(/^https?:\/\//, '')}</span>
             </a>
           )}
           <span className="flex items-center gap-1">
@@ -1167,6 +1192,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
 export default function ProfilePage() {
   const params = useParams<{ handle: string }>();
   const handle = params.handle?.replace('@', '') ?? '';
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [tipModalOpen, setTipModalOpen] = useState(false);
 
@@ -1182,8 +1208,25 @@ export default function ProfilePage() {
     data: humanProfile,
     isLoading: isHumanLoading,
   } = useQuery({
-    queryKey: ['human', 'public', handle],
-    queryFn: () => apiClient.humans.getPublicProfile(handle),
+    queryKey: ['human', 'public', handle, user?.walletAddress],
+    queryFn: async () => {
+      try {
+        return await apiClient.humans.getPublicProfile(handle);
+      } catch (err) {
+        // If handle matches authenticated user's own handle or username but was not in DB yet, query by wallet
+        if (user?.walletAddress && (
+          (user?.username && handle.toLowerCase() === user.username.toLowerCase()) ||
+          (user?.handle && handle.toLowerCase() === user.handle.toLowerCase())
+        )) {
+          try {
+            return await apiClient.humans.getPublicProfile(user.walletAddress);
+          } catch {
+            throw err;
+          }
+        }
+        throw err;
+      }
+    },
     enabled: !!handle && !agent,
     retry: false,
   });

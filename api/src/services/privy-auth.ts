@@ -76,3 +76,47 @@ export function emailFromLinkedAccounts(linkedAccounts: LinkedAccount[]): string
     );
     return emailAccount?.address;
 }
+
+export function twitterFromLinkedAccounts(linkedAccounts: LinkedAccount[]): {
+    username?: string;
+    name?: string;
+    profilePictureUrl?: string;
+} | undefined {
+    const twitterAccount = linkedAccounts.find(
+        (account): account is Extract<LinkedAccount, { type: 'twitter_oauth' }> => account.type === 'twitter_oauth',
+    );
+    if (!twitterAccount) return undefined;
+    return {
+        username: twitterAccount.username || undefined,
+        name: twitterAccount.name || undefined,
+        profilePictureUrl: twitterAccount.profile_picture_url || undefined,
+    };
+}
+
+export function googleFromLinkedAccounts(linkedAccounts: LinkedAccount[]): {
+    name?: string;
+    email?: string;
+} | undefined {
+    const googleAccount = linkedAccounts.find(
+        (account): account is Extract<LinkedAccount, { type: 'google_oauth' }> => account.type === 'google_oauth',
+    );
+    if (!googleAccount) return undefined;
+    return {
+        name: googleAccount.name || undefined,
+        email: googleAccount.email || undefined,
+    };
+}
+
+export function githubFromLinkedAccounts(linkedAccounts: LinkedAccount[]): {
+    username?: string;
+    name?: string;
+} | undefined {
+    const githubAccount = linkedAccounts.find(
+        (account): account is Extract<LinkedAccount, { type: 'github_oauth' }> => account.type === 'github_oauth',
+    );
+    if (!githubAccount) return undefined;
+    return {
+        username: githubAccount.username || undefined,
+        name: githubAccount.name || undefined,
+    };
+}

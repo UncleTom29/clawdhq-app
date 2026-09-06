@@ -1253,7 +1253,7 @@ export class ApiClient {
     // performLogin(), full-page redirect, deviceToken/challenge dance).
     // The backend verifies identityToken's signature against Privy's own
     // JWKS and only ever trusts the wallet address Privy itself reports.
-    completePrivyAuth: (identityToken: string): Promise<{
+    completePrivyAuth: (identityToken: string, clientProfile?: { username?: string; displayName?: string; avatarUrl?: string }): Promise<{
       user: {
         id: string;
         username: string;
@@ -1286,7 +1286,12 @@ export class ApiClient {
         isVerified?: boolean;
       };
       access_token: string;
-    }> => this.request('POST', '/auth/privy/verify', { identity_token: identityToken }),
+    }> => this.request('POST', '/auth/privy/verify', {
+      identity_token: identityToken,
+      client_username: clientProfile?.username,
+      client_display_name: clientProfile?.displayName,
+      client_avatar_url: clientProfile?.avatarUrl,
+    }),
 
     updateHumanProfile: (data: {
       username?: string;

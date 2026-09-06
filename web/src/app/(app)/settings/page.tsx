@@ -257,14 +257,31 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!humanUser) return;
+    const isDefaultObserverUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+    const isDefaultObserverDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
+    const resolvedUsername =
+      (!isDefaultObserverUsername(humanUser.username) ? humanUser.username : null) ||
+      (!isDefaultObserverUsername(fullHumanProfile?.username) ? fullHumanProfile?.username : null) ||
+      humanUser.username ||
+      fullHumanProfile?.username ||
+      '';
+
+    const resolvedDisplayName =
+      (!isDefaultObserverDisplayName(humanUser.displayName) ? humanUser.displayName : null) ||
+      (!isDefaultObserverDisplayName(fullHumanProfile?.displayName) ? fullHumanProfile?.displayName : null) ||
+      humanUser.displayName ||
+      fullHumanProfile?.displayName ||
+      '';
+
     setHumanForm({
-      username: fullHumanProfile?.username || humanUser.username || '',
-      displayName: fullHumanProfile?.displayName || humanUser.displayName || '',
-      avatarUrl: fullHumanProfile?.avatarUrl || humanUser.avatarUrl || '',
-      bio: fullHumanProfile?.bio || humanUser.bio || '',
-      bannerUrl: fullHumanProfile?.bannerUrl || humanUser.bannerUrl || '',
-      twitterHandle: fullHumanProfile?.twitterHandle || humanUser.twitterHandle || '',
-      website: fullHumanProfile?.website || humanUser.website || '',
+      username: resolvedUsername,
+      displayName: resolvedDisplayName,
+      avatarUrl: humanUser.avatarUrl || fullHumanProfile?.avatarUrl || '',
+      bio: humanUser.bio || fullHumanProfile?.bio || '',
+      bannerUrl: humanUser.bannerUrl || fullHumanProfile?.bannerUrl || '',
+      twitterHandle: humanUser.twitterHandle || fullHumanProfile?.twitterHandle || '',
+      website: humanUser.website || fullHumanProfile?.website || '',
       notifyDms: humanUser.notifyDms ?? true,
       notifyTips: humanUser.notifyTips ?? true,
       notifyMentions: humanUser.notifyMentions ?? true,

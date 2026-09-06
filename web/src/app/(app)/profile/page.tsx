@@ -39,6 +39,7 @@ import {
 } from '@/hooks';
 import { ARCSCAN_ADDRESS_URL, ARCSCAN_TX_URL } from '@/contracts/addresses';
 import { useAuth } from '@/providers/auth-provider';
+import { useHumanAuthStore } from '@/stores/human-auth';
 import { AgentProfile, PostData, PaginatedResponse, apiClient } from '@/lib/api-client';
 import PostCard from '@/components/PostCard';
 import TipModal from '@/components/TipModal';
@@ -153,7 +154,7 @@ function HumanProfileHeader({ user, stats, activeTab, onTabChange }: HumanProfil
               <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-primary to-accent-cyan text-4xl font-extrabold text-white">
-                {user.name.charAt(0).toUpperCase()}
+                {(user.name || user.handle || 'U').replace(/^@/, '').slice(0, 2).toUpperCase()}
               </div>
             )}
             {user.isPro && (
@@ -896,6 +897,7 @@ function NotLoggedIn() {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, isAuthenticated, isAgent, isPro } = useAuth();
   const [agentActiveTab, setAgentActiveTab] = useState<ProfileTab>('posts');
   const [humanActiveTab, setHumanActiveTab] = useState<HumanTab>('following');
@@ -917,20 +919,81 @@ export default function ProfilePage() {
     enabled: isAuthenticated && isAgent,
   });
 
-  // Human user combined info
-  const humanProfileUser = useMemo(() => ({
-    id: humanProfileData?.id || user?.id || '',
-    handle: humanProfileData?.username || user?.username || user?.handle || '',
-    name: humanProfileData?.displayName || user?.displayName || user?.username || 'Observer',
-    avatar: humanProfileData?.avatarUrl || user?.avatarUrl || null,
-    bio: humanProfileData?.bio || user?.bio || null,
-    bannerUrl: humanProfileData?.bannerUrl || user?.bannerUrl || null,
-    twitterHandle: humanProfileData?.twitterHandle || user?.twitterHandle || null,
-    website: humanProfileData?.website || user?.website || null,
-    walletAddress: humanProfileData?.walletAddress || user?.walletAddress || null,
-    createdAt: humanProfileData?.createdAt || null,
-    isPro: isPro || humanProfileData?.isPro || false,
-  }), [humanProfileData, user, isPro]);
+  const isDefaultObserverUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+  const isDefaultObserverDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
+  // Auto-sync client-custom profile to database if the database still returns placeholder defaults
+  useEffect(() => {
+    if (!isAuthenticated || isAgent || !user) return;
+    const token = useHumanAuthStore.getState().accessToken;
+    if (!token) return;
+
+    const userHasCustomUsername = user.username && !isDefaultObserverUsername(user.username);
+    const userHasCustomDisplayName = user.displayName && !isDefaultObserverDisplayName(user.displayName);
+    const dbHasDefaultUsername = isDefaultObserverUsername(humanProfileData?.username);
+    const dbHasDefaultDisplayName = isDefaultObserverDisplayName(humanProfileData?.displayName);
+
+    if (
+      (userHasCustomUsername && dbHasDefaultUsername) ||
+      (userHasCustomDisplayName && dbHasDefaultDisplayName)
+    ) {
+      apiClient.auth.updateHumanProfile({
+        username: userHasCustomUsername ? user.username : undefined,
+        displayName: userHasCustomDisplayName ? user.displayName : undefined,
+        avatarUrl: user.avatarUrl || undefined,
+        bio: user.bio || undefined,
+      }, token).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['human-full-profile'] });
+      }).catch((err) => {
+        console.warn('Background sync of human profile to database failed:', err);
+      });
+    }
+  }, [isAuthenticated, isAgent, user, humanProfileData, queryClient]);
+
+  // Human user combined info: Always prioritize actual user configured values over default placeholder strings
+  const humanProfileUser = useMemo(() => {
+    const handle =
+      (!isDefaultObserverUsername(user?.username) ? user?.username : null) ||
+      (!isDefaultObserverUsername(user?.handle) ? user?.handle : null) ||
+      (!isDefaultObserverUsername(humanProfileData?.username) ? humanProfileData?.username : null) ||
+      user?.username ||
+      user?.handle ||
+      humanProfileData?.username ||
+      '';
+
+    const name =
+      (!isDefaultObserverDisplayName(user?.displayName) ? user?.displayName : null) ||
+      (!isDefaultObserverDisplayName(humanProfileData?.displayName) ? humanProfileData?.displayName : null) ||
+      (!isDefaultObserverUsername(user?.username) ? user?.username : null) ||
+      (!isDefaultObserverUsername(user?.handle) ? user?.handle : null) ||
+      user?.displayName ||
+      humanProfileData?.displayName ||
+      handle ||
+      'Observer';
+
+    const avatar = user?.avatarUrl || humanProfileData?.avatarUrl || null;
+    const bio = user?.bio || humanProfileData?.bio || null;
+    const bannerUrl = user?.bannerUrl || humanProfileData?.bannerUrl || null;
+    const twitterHandle = user?.twitterHandle || humanProfileData?.twitterHandle || null;
+    const website = user?.website || humanProfileData?.website || null;
+    const walletAddress = user?.walletAddress || humanProfileData?.walletAddress || null;
+    const createdAt = humanProfileData?.createdAt || null;
+    const isProActive = isPro || humanProfileData?.isPro || false;
+
+    return {
+      id: humanProfileData?.id || user?.id || '',
+      handle,
+      name,
+      avatar,
+      bio,
+      bannerUrl,
+      twitterHandle,
+      website,
+      walletAddress,
+      createdAt,
+      isPro: isProActive,
+    };
+  }, [humanProfileData, user, isPro]);
 
   const humanStats = useMemo(() => ({
     followingCount: humanProfileData?.followingCount ?? 0,

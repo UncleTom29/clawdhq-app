@@ -30,6 +30,9 @@ import {
 import {
     PrivyAuthError,
     emailFromLinkedAccounts,
+    githubFromLinkedAccounts,
+    googleFromLinkedAccounts,
+    twitterFromLinkedAccounts,
     verifyPrivyIdentityToken,
     walletAddressFromLinkedAccounts,
 } from '../services/privy-auth';
@@ -909,19 +912,75 @@ router.post('/auth/privy/verify', async (req: Request, res: Response) => {
         const email = emailFromLinkedAccounts(user.linked_accounts);
 
         const defaults = getHumanProfileDefaults(normalizedAddress);
+
+        const twitter = twitterFromLinkedAccounts(user.linked_accounts);
+        const google = googleFromLinkedAccounts(user.linked_accounts);
+        const github = githubFromLinkedAccounts(user.linked_accounts);
+
+        const rawClientUsername = req.body?.client_username ? String(req.body.client_username).trim().toLowerCase().replace(/\s+/g, '_') : undefined;
+        const clientUsername = rawClientUsername && /^[a-z0-9_]{3,20}$/.test(rawClientUsername) ? rawClientUsername : undefined;
+        const clientDisplayName = req.body?.client_display_name ? String(req.body.client_display_name).trim() : undefined;
+        const clientAvatarUrl = req.body?.client_avatar_url ? String(req.body.client_avatar_url).trim() : undefined;
+
+        const candidateUsername = clientUsername || twitter?.username || github?.username;
+        const candidateDisplayName = clientDisplayName || twitter?.name || google?.name || github?.name;
+        const candidateAvatarUrl = clientAvatarUrl || twitter?.profilePictureUrl || null;
+        const candidateTwitterHandle = twitter?.username ? twitter.username.replace(/^@/, '') : null;
+
+        let finalUsername = defaults.username;
+        if (candidateUsername) {
+            const existingWithUsername = await prisma.humanObserver.findFirst({
+                where: {
+                    username: candidateUsername,
+                    walletAddress: { not: normalizedAddress },
+                },
+            });
+            if (!existingWithUsername) {
+                finalUsername = candidateUsername;
+            }
+        }
+
+        const isDefaultUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+        const isDefaultDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
+        const existingHuman = await prisma.humanObserver.findUnique({
+            where: { walletAddress: normalizedAddress },
+        });
+
+        const updateData: any = {
+            email,
+            authMethod: 'PRIVY',
+        };
+
+        if (finalUsername !== defaults.username) {
+            if (!existingHuman || isDefaultUsername(existingHuman.username)) {
+                updateData.username = finalUsername;
+            }
+        }
+        if (candidateDisplayName) {
+            if (!existingHuman || isDefaultDisplayName(existingHuman.displayName)) {
+                updateData.displayName = candidateDisplayName;
+            }
+        }
+        if (candidateAvatarUrl && (!existingHuman || !existingHuman.avatarUrl)) {
+            updateData.avatarUrl = candidateAvatarUrl;
+        }
+        if (candidateTwitterHandle && (!existingHuman || !existingHuman.twitterHandle)) {
+            updateData.twitterHandle = candidateTwitterHandle;
+        }
+
         const human = await prisma.humanObserver.upsert({
             where: { walletAddress: normalizedAddress },
             create: {
                 walletAddress: normalizedAddress,
-                username: defaults.username,
-                displayName: defaults.displayName,
+                username: finalUsername,
+                displayName: candidateDisplayName || defaults.displayName,
+                avatarUrl: candidateAvatarUrl,
+                twitterHandle: candidateTwitterHandle,
                 email,
                 authMethod: 'PRIVY',
             },
-            update: {
-                email,
-                authMethod: 'PRIVY',
-            },
+            update: updateData,
         });
 
         sendData(res, {
@@ -3043,15 +3102,20 @@ router.post('/humans/upgrade-test', async (req: Request, res: Response) => {
 router.get('/humans/profile/:identifier', async (req: Request, res: Response) => {
     try {
         const identifier = req.params.identifier.replace(/^@/, '');
-        const human = await prisma.humanObserver.findFirst({
-            where: {
-                OR: [
-                    { username: { equals: identifier, mode: 'insensitive' } },
-                    { walletAddress: { equals: identifier, mode: 'insensitive' } },
-                    { id: identifier },
-                ],
-            },
-        });
+        let human = null;
+        if (identifier.toLowerCase() === 'me') {
+            human = await getHumanFromRequest(req);
+        } else {
+            human = await prisma.humanObserver.findFirst({
+                where: {
+                    OR: [
+                        { username: { equals: identifier, mode: 'insensitive' } },
+                        { walletAddress: { equals: identifier, mode: 'insensitive' } },
+                        { id: identifier },
+                    ],
+                },
+            });
+        }
 
         if (!human) {
             return sendError(res, 404, 'NOT_FOUND', 'Human observer not found');

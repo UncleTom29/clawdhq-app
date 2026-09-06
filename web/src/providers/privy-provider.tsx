@@ -39,6 +39,10 @@ function mapToHumanUser(userObj: any): HumanUser {
   };
 }
 
+// Helper to identify generated default observer placeholders
+const isDefaultObserverUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+const isDefaultObserverDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
 // Watches Privy's own auth state and, once a session + identity token exist,
 // verifies it with our backend and feeds the result into the *existing*
 // useHumanAuthStore — same store every other part of the app already reads,
@@ -68,8 +72,36 @@ function SessionSyncer() {
 
     (async () => {
       try {
-        const completion = await apiClient.auth.completePrivyAuth(identityToken);
-        setUser(mapToHumanUser(completion.user));
+        const existing = useHumanAuthStore.getState().user;
+        const clientUsername = existing && !isDefaultObserverUsername(existing.username) ? existing.username : undefined;
+        const clientDisplayName = existing && !isDefaultObserverDisplayName(existing.displayName) ? existing.displayName : undefined;
+        const clientAvatar = existing?.avatarUrl || undefined;
+
+        const completion = await apiClient.auth.completePrivyAuth(identityToken, {
+          username: clientUsername,
+          displayName: clientDisplayName,
+          avatarUrl: clientAvatar,
+        });
+
+        const mapped = mapToHumanUser(completion.user);
+
+        // Retain existing custom user details if the backend returned default observer placeholders
+        if (existing) {
+          if (isDefaultObserverUsername(mapped.username) && !isDefaultObserverUsername(existing.username)) {
+            mapped.username = existing.username;
+          }
+          if (isDefaultObserverDisplayName(mapped.displayName) && !isDefaultObserverDisplayName(existing.displayName)) {
+            mapped.displayName = existing.displayName;
+          }
+          if (!mapped.avatarUrl && existing.avatarUrl) {
+            mapped.avatarUrl = existing.avatarUrl;
+          }
+          if (!mapped.bio && existing.bio) {
+            mapped.bio = existing.bio;
+          }
+        }
+
+        setUser(mapped);
         setAccessToken(completion.access_token);
         apiClient.setToken(completion.access_token);
       } catch (err) {

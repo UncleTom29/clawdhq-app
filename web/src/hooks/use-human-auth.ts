@@ -66,10 +66,24 @@ export function useHumanAuth() {
       try {
         const me = await api.auth.getMe();
         if (me && user) {
+          const isDefaultObserverUsername = (h?: string | null) => !h || /^observer_[a-f0-9]{4,8}$/i.test(h);
+          const isDefaultObserverDisplayName = (d?: string | null) => !d || /^Observer [a-f0-9]{4,8}$/i.test(d);
+
+          const resolvedUsername =
+            (!isDefaultObserverUsername(me.username) ? me.username : null) ||
+            (!isDefaultObserverUsername(user.username) ? user.username : null) ||
+            me.username || user.username;
+
+          const resolvedDisplayName =
+            (!isDefaultObserverDisplayName(me.displayName) ? me.displayName : null) ||
+            (!isDefaultObserverDisplayName(me.xName) ? me.xName : null) ||
+            (!isDefaultObserverDisplayName(user.displayName) ? user.displayName : null) ||
+            me.displayName || me.xName || user.displayName;
+
           setUser({
             ...user,
-            username: me.username || user.username,
-            displayName: me.displayName || me.xName || user.displayName,
+            username: resolvedUsername,
+            displayName: resolvedDisplayName,
             avatarUrl: me.avatarUrl ?? me.avatar_url ?? (me.xAvatar || user.avatarUrl),
             bio: me.bio ?? user.bio,
             bannerUrl: me.bannerUrl ?? me.banner_url ?? user.bannerUrl,
