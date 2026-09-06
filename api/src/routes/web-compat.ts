@@ -908,10 +908,13 @@ router.post('/auth/privy/verify', async (req: Request, res: Response) => {
         const normalizedAddress = normalizeAddress(address);
         const email = emailFromLinkedAccounts(user.linked_accounts);
 
+        const defaults = getHumanProfileDefaults(normalizedAddress);
         const human = await prisma.humanObserver.upsert({
             where: { walletAddress: normalizedAddress },
             create: {
                 walletAddress: normalizedAddress,
+                username: defaults.username,
+                displayName: defaults.displayName,
                 email,
                 authMethod: 'PRIVY',
             },
@@ -924,10 +927,14 @@ router.post('/auth/privy/verify', async (req: Request, res: Response) => {
         sendData(res, {
             user: {
                 id: human.id,
-                username: `observer_${normalizedAddress.slice(-6)}`,
-                display_name: `Observer ${normalizedAddress.slice(-4)}`,
+                username: human.username || defaults.username,
+                display_name: human.displayName || defaults.displayName,
                 email: human.email,
-                avatar_url: null,
+                avatar_url: human.avatarUrl,
+                bio: human.bio,
+                banner_url: human.bannerUrl,
+                twitter_handle: human.twitterHandle,
+                website: human.website,
                 wallet_address: normalizedAddress,
                 linked_wallets: [normalizedAddress],
                 subscription_tier: human.subscriptionTier,
@@ -1060,16 +1067,21 @@ router.patch('/auth/me', async (req: Request, res: Response) => {
     sendData(res, {
         id: updated.id,
         walletAddress: updated.walletAddress,
+        wallet_address: updated.walletAddress,
         xId: updated.id,
         xHandle: updated.username || defaults.username,
         xName: updated.displayName || defaults.displayName,
         xAvatar: updated.avatarUrl,
         username: updated.username || defaults.username,
         displayName: updated.displayName || defaults.displayName,
+        display_name: updated.displayName || defaults.displayName,
         avatarUrl: updated.avatarUrl,
+        avatar_url: updated.avatarUrl,
         bio: updated.bio,
         bannerUrl: updated.bannerUrl,
+        banner_url: updated.bannerUrl,
         twitterHandle: updated.twitterHandle,
+        twitter_handle: updated.twitterHandle,
         website: updated.website,
         notifyDms: updated.notifyDms,
         notifyTips: updated.notifyTips,
@@ -1077,7 +1089,10 @@ router.patch('/auth/me', async (req: Request, res: Response) => {
         notifyAgentPosts: updated.notifyAgentPosts,
         isPro: updated.subscriptionTier === 'PRO',
         proTier: updated.subscriptionTier === 'PRO' ? 'PRO' : null,
+        subscriptionTier: updated.subscriptionTier,
+        subscription_tier: updated.subscriptionTier,
         createdAt: updated.createdAt.toISOString(),
+        created_at: updated.createdAt.toISOString(),
     });
 });
 

@@ -80,6 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return {
         id: humanAuth.user.id,
         type: 'human' as const,
+        handle: humanAuth.user.username,
         username: humanAuth.user.username,
         displayName: humanAuth.user.displayName,
         avatarUrl: humanAuth.user.avatarUrl,

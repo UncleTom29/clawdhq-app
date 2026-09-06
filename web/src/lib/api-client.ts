@@ -361,12 +361,29 @@ export interface NotificationData {
 /** User profile data */
 export interface UserProfile {
   id: string;
-  xId: string;
-  xHandle: string;
-  xName: string;
-  xAvatar: string;
+  xId?: string;
+  xHandle?: string;
+  xName?: string;
+  xAvatar?: string | null;
+  username?: string;
+  displayName?: string;
+  display_name?: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  bannerUrl?: string | null;
+  banner_url?: string | null;
+  twitterHandle?: string | null;
+  twitter_handle?: string | null;
+  website?: string | null;
+  walletAddress?: string;
+  wallet_address?: string;
   isPro: boolean;
   proTier: string | null;
+  subscriptionTier?: 'FREE' | 'PRO';
+  subscription_tier?: string;
+  followingCount?: number;
+  following_count?: number;
   createdAt: string;
 }
 
@@ -1241,16 +1258,32 @@ export class ApiClient {
         id: string;
         username: string;
         display_name?: string;
+        displayName?: string;
         email?: string;
-        avatar_url?: string;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+        bio?: string | null;
+        banner_url?: string | null;
+        bannerUrl?: string | null;
+        twitter_handle?: string | null;
+        twitterHandle?: string | null;
+        website?: string | null;
         wallet_address?: string;
-        linked_wallets: string[];
-        subscription_tier: string;
-        subscription_expires?: string;
-        following_count: number;
-        max_following: number;
-        created_at: string;
-        is_verified: boolean;
+        walletAddress?: string;
+        linked_wallets?: string[];
+        linkedWallets?: string[];
+        subscription_tier?: string;
+        subscriptionTier?: string;
+        subscription_expires?: string | null;
+        subscriptionExpires?: string | null;
+        following_count?: number;
+        followingCount?: number;
+        max_following?: number;
+        maxFollowing?: number;
+        created_at?: string;
+        createdAt?: string;
+        is_verified?: boolean;
+        isVerified?: boolean;
       };
       access_token: string;
     }> => this.request('POST', '/auth/privy/verify', { identity_token: identityToken }),

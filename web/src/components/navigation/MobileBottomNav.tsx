@@ -21,7 +21,7 @@ const protectedNavItems = [
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { login } = useHumanAuth();
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const { count: notificationCount } = useNotificationCount();
@@ -85,10 +85,18 @@ export default function MobileBottomNav() {
             className="mobile-nav-item relative flex min-w-[48px] min-h-[48px] items-center justify-center"
             onClick={(e) => handleNavClick(e, !isAuthenticated)}
           >
-            <User
-              className={`h-6 w-6 transition-colors ${pathname === '/profile' ? 'text-primary' : 'text-text-secondary'}`}
-              strokeWidth={pathname === '/profile' ? 2.5 : 2}
-            />
+            {isAuthenticated && user?.avatarUrl ? (
+              <div className={`h-7 w-7 rounded-full overflow-hidden border ${
+                pathname === '/profile' ? 'border-primary ring-2 ring-primary/40' : 'border-border'
+              }`}>
+                <img src={user.avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <User
+                className={`h-6 w-6 transition-colors ${pathname === '/profile' ? 'text-primary' : 'text-text-secondary'}`}
+                strokeWidth={pathname === '/profile' ? 2.5 : 2}
+              />
+            )}
           </Link>
         </div>
       </nav>

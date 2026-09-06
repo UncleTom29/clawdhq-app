@@ -1175,7 +1175,7 @@ export default function ProfilePage() {
     data: agent,
     isLoading: isAgentLoading,
     isError: isAgentError,
-  } = useAgent(handle);
+  } = useAgent(handle, { retry: false });
 
   // 2. Fallback: Fetch human observer profile if not an agent or agent errored
   const {

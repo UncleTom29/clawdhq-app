@@ -61,6 +61,31 @@ export function useHumanAuth() {
     }
   }, [accessToken, user, setUser]);
 
+  const syncUserWithBackend = useCallback(async () => {
+    if (accessToken) {
+      try {
+        const me = await api.auth.getMe();
+        if (me && user) {
+          setUser({
+            ...user,
+            username: me.username || user.username,
+            displayName: me.displayName || me.xName || user.displayName,
+            avatarUrl: me.avatarUrl ?? me.avatar_url ?? (me.xAvatar || user.avatarUrl),
+            bio: me.bio ?? user.bio,
+            bannerUrl: me.bannerUrl ?? me.banner_url ?? user.bannerUrl,
+            twitterHandle: me.twitterHandle ?? me.twitter_handle ?? user.twitterHandle,
+            website: me.website ?? user.website,
+            subscriptionTier: (me.subscriptionTier || (me.isPro ? 'PRO' : 'FREE')) as 'FREE' | 'PRO',
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to sync human profile with backend:', err);
+      }
+    } else {
+      await handleLogin();
+    }
+  }, [accessToken, user, setUser, handleLogin]);
+
   return {
     // State
     user,
@@ -79,7 +104,7 @@ export function useHumanAuth() {
     login: handleLogin,
     logout: handleLogout,
     updateProfile,
-    syncUserWithBackend: handleLogin,
+    syncUserWithBackend,
   };
 }
 

@@ -19,6 +19,7 @@ import {
   FileText,
   Users,
   UserPlus,
+  User,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useWalletAccount as useAccount } from '@/hooks/use-wallet-account';
@@ -165,9 +166,22 @@ function UserSection({ onOpenSettings, onNavigate }: { onOpenSettings: () => voi
   });
 
   const isProActive = isPro || tierStatus?.isProActive || false;
+  
+  // Display name: human's custom displayName or username, or fallback to 'Observer' (never wallet address!)
   const displayName = isAgent 
-    ? `@${user?.handle}` 
-    : address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Account';
+    ? (user?.displayName || `@${user?.handle || 'agent'}`)
+    : (user?.displayName || user?.username || 'Observer');
+
+  // Username handle: @handle
+  const handle = isAgent 
+    ? (user?.handle ? `@${user.handle}` : null)
+    : (user?.username ? `@${user.username}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null));
+
+  // Avatar initials: from displayName, username, or fallback to 'U'
+  const avatarInitial = (user?.displayName || user?.username || (isAgent ? user?.handle : '') || 'U')
+    .replace(/^@/, '')
+    .slice(0, 2)
+    .toUpperCase();
 
   // For unauthenticated users, show a single Login button (Privy email
   // login — HumanLoginButton already tracks its own loading/disabled state,
@@ -193,10 +207,10 @@ function UserSection({ onOpenSettings, onNavigate }: { onOpenSettings: () => voi
         {/* Avatar */}
         <div className="avatar-sm flex-shrink-0">
           {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            <img src={user.avatarUrl} alt={displayName} className="h-full w-full rounded-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
-              {(user?.handle || address || 'U').slice(0, 2).toUpperCase()}
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+              {avatarInitial}
             </div>
           )}
         </div>
@@ -209,6 +223,11 @@ function UserSection({ onOpenSettings, onNavigate }: { onOpenSettings: () => voi
             </span>
             {isProActive && <ProBadge />}
           </div>
+          {handle && (
+            <p className="truncate text-xs text-text-secondary">
+              {handle}
+            </p>
+          )}
         </div>
 
         {/* More icon - desktop only */}
@@ -299,6 +318,7 @@ export default function SidebarNavigation({
     { href: '/messages', icon: Mail, label: 'Messages', badge: messageCount, requiresAuth: true },
     { href: '/bookmarks', icon: Bookmark, label: 'Bookmarks', requiresAuth: true },
     { href: '/following', icon: Users, label: 'Following', requiresAuth: true },
+    { href: '/profile', icon: User, label: 'Profile', requiresAuth: true },
     { href: '/advertise', icon: Megaphone, label: 'Advertise', requiresAuth: true },
     { href: '/claim-agent', icon: BadgeCheck, label: 'Claim Agent', requiresAuth: true },
   ];

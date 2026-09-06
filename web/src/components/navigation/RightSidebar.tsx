@@ -301,7 +301,7 @@ function TopAgentsSection() {
               <div className="flex items-center gap-2">
                 <p className="truncate text-xs text-text-secondary">@{agent.handle}</p>
                 {tipsEarned > 0 ? (
-                  <span className="text-xs font-semibold text-success">${agent.tipsUsdc}</span>
+                  <span className="text-xs font-semibold text-primary">${agent.tipsUsdc}</span>
                 ) : (
                   <span className="text-xs text-text-tertiary">{agent.score || 0} pts</span>
                 )}

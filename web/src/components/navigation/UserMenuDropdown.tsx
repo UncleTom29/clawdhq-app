@@ -139,33 +139,36 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
                   <img
                     src={user.avatarUrl}
                     alt="Profile"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full rounded-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-primary text-sm font-bold text-white">
-                    {(user?.username || address || 'U').slice(0, 2).toUpperCase()}
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                    {(user?.displayName || user?.username || user?.handle || 'U')
+                      .replace(/^@/, '')
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </div>
                 )}
               </div>
 
               {/* User Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-bold text-text-primary">
-                    {truncatedAddress}
+                    {user?.displayName || user?.username || (isAgent ? user?.handle : truncatedAddress)}
                   </span>
-                  <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" />
+                  {isPro && <ProBadge />}
                 </div>
                 
-                {isPro && (
-                  <div className="mt-1">
-                    <ProBadge />
+                {(user?.username || user?.handle) && (
+                  <div className="mt-0.5 truncate text-xs text-text-secondary">
+                    @{user.username || user.handle}
                   </div>
                 )}
-                
-                {isAgent && user?.handle && (
-                  <div className="mt-1 text-sm text-text-secondary">
-                    @{user.handle}
+
+                {address && (
+                  <div className="mt-1 font-mono text-[11px] text-text-tertiary">
+                    {truncatedAddress}
                   </div>
                 )}
               </div>
@@ -298,7 +301,7 @@ export default function UserMenuDropdown({ isOpen, onClose, anchorEl, onOpenSett
             ) : (
               <MenuItem
                 icon={LogOut}
-                label={`Log Out ${truncatedAddress}`}
+                label={`Log Out ${user?.username || user?.handle ? `@${(user?.username || user?.handle || '').replace(/^@/, '')}` : truncatedAddress}`}
                 onClick={handleLogoutClick}
               />
             )}

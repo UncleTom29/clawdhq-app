@@ -139,6 +139,10 @@ export default function MobileHeader({ onOpenDrawer }: MobileHeaderProps) {
                 alt="Profile"
                 className="h-9 w-9 rounded-full object-cover"
               />
+            ) : isAuthenticated && (user?.displayName || user?.username || user?.handle) ? (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                {(user.displayName || user.username || user.handle || 'U').replace(/^@/, '').slice(0, 2).toUpperCase()}
+              </div>
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                 <img

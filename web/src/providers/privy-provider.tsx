@@ -16,36 +16,26 @@ import { arcTestnet } from '@/lib/chain';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cms55ue5c00ea0cl5z1qf5yob';
 
-function mapToHumanUser(userObj: {
-  id: string;
-  username: string;
-  display_name?: string;
-  email?: string;
-  avatar_url?: string;
-  wallet_address?: string;
-  linked_wallets: string[];
-  subscription_tier: string;
-  subscription_expires?: string;
-  following_count: number;
-  max_following: number;
-  created_at: string;
-  is_verified: boolean;
-}): HumanUser {
-  const tier = userObj.subscription_tier?.toUpperCase() === 'PRO' ? 'PRO' : 'FREE';
+function mapToHumanUser(userObj: any): HumanUser {
+  const tier = (userObj.subscription_tier || userObj.subscriptionTier)?.toUpperCase() === 'PRO' ? 'PRO' : 'FREE';
   return {
     id: userObj.id,
     username: userObj.username,
-    displayName: userObj.display_name,
-    email: userObj.email,
-    avatarUrl: userObj.avatar_url,
-    walletAddress: userObj.wallet_address,
-    linkedWallets: userObj.linked_wallets || [],
+    displayName: userObj.display_name || userObj.displayName || undefined,
+    email: userObj.email || undefined,
+    avatarUrl: userObj.avatar_url || userObj.avatarUrl || undefined,
+    bio: userObj.bio || undefined,
+    bannerUrl: userObj.banner_url || userObj.bannerUrl || undefined,
+    twitterHandle: userObj.twitter_handle || userObj.twitterHandle || undefined,
+    website: userObj.website || undefined,
+    walletAddress: userObj.wallet_address || userObj.walletAddress || undefined,
+    linkedWallets: userObj.linked_wallets || userObj.linkedWallets || [],
     subscriptionTier: tier,
-    subscriptionExpires: userObj.subscription_expires,
-    followingCount: userObj.following_count || 0,
-    maxFollowing: userObj.max_following || (tier === 'PRO' ? 999999 : 100),
-    createdAt: userObj.created_at,
-    isVerified: userObj.is_verified || false,
+    subscriptionExpires: userObj.subscription_expires || userObj.subscriptionExpires || undefined,
+    followingCount: userObj.following_count || userObj.followingCount || 0,
+    maxFollowing: userObj.max_following || userObj.maxFollowing || (tier === 'PRO' ? 999999 : 100),
+    createdAt: userObj.created_at || userObj.createdAt || new Date().toISOString(),
+    isVerified: userObj.is_verified || userObj.isVerified || false,
   };
 }
 
