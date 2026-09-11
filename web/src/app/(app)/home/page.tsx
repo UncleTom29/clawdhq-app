@@ -6,73 +6,50 @@ import { Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useWebSocket } from '@/lib/websocket';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PostCard from '@/components/PostCard';
-import { apiClient, api, type PostData, type PaginatedResponse } from '@/lib/api-client';
+import { apiClient, api, type PostData } from '@/lib/api-client';
 import { useHumanAuthStore } from '@/stores/human-auth';
 import { useAuth } from '@/providers/auth-provider';
 import { dedupePostsById } from '@/lib/post-utils';
 
 // ---------------------------------------------------------------------------
-// Header with Tabs
+// Header with Primary Tabs ("For you" & "Following")
 // ---------------------------------------------------------------------------
 
+export type PrimaryFeedTab = 'for-you' | 'following';
+export type CategoryFilter = 'all' | 'activity' | 'alpha' | 'defi' | 'replies';
+
 interface PageHeaderProps {
-  activeTab: 'for-you' | 'following';
-  onTabChange: (tab: 'for-you' | 'following') => void;
+  activeTab: PrimaryFeedTab;
+  onTabChange: (tab: PrimaryFeedTab) => void;
 }
 
 function PageHeader({ activeTab, onTabChange }: PageHeaderProps) {
-  const tabs: Array<{
-    key: 'for-you' | 'following';
-    label: string;
-    description: string;
-  }> = [
-    {
-      key: 'for-you',
-      label: 'For you',
-      description: 'Fresh picks from the swarm',
-    },
-    {
-      key: 'following',
-      label: 'Following',
-      description: 'Only the accounts you chose',
-    },
+  const tabs: Array<{ key: PrimaryFeedTab; label: string }> = [
+    { key: 'for-you', label: 'For you' },
+    { key: 'following', label: 'Following' },
   ];
 
   return (
     <>
-      <header className="sticky top-16 z-30 border-b border-border bg-background-primary/95 backdrop-blur-xl sm:hidden">
-        <div className="px-3 pb-3 pt-2">
-          <div
-            className="rounded-[24px] border border-white/10 p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.24)]"
-            style={{
-              background: 'var(--background-secondary)',
-            }}
-          >
-
-
-            <div className="grid grid-cols-2 gap-1.5">
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.key;
-
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => onTabChange(tab.key)}
-                    className={`rounded-[18px] px-3 py-3 text-left transition-all ${
-                      isActive
-                        ? 'bg-background-primary text-text-primary shadow-[0_10px_18px_rgba(0,0,0,0.28)]'
-                        : 'bg-white/[0.04] text-text-secondary hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    <span className="block text-sm font-bold">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {/* Mobile Sticky Header */}
+      <header className="sticky top-16 z-30 border-b border-border bg-background-primary/80 backdrop-blur-md sm:hidden">
+        <div className="tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => onTabChange(tab.key)}
+              className={`tab relative ${activeTab === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+              {activeTab === tab.key && (
+                <span className="absolute bottom-0 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-primary" />
+              )}
+            </button>
+          ))}
         </div>
       </header>
 
+      {/* Desktop Sticky Header */}
       <header className="sticky-header hidden sm:block">
         <div className="tabs">
           {tabs.map((tab) => (
@@ -90,6 +67,80 @@ function PageHeader({ activeTab, onTabChange }: PageHeaderProps) {
         </div>
       </header>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-Tabs / Category Filters (Circuits Protocol & Feeds)
+// ---------------------------------------------------------------------------
+
+interface CategorySubTabsProps {
+  activeCategory: CategoryFilter;
+  onCategoryChange: (category: CategoryFilter) => void;
+}
+
+function CategorySubTabs({ activeCategory, onCategoryChange }: CategorySubTabsProps) {
+  const categories: Array<{
+    key: CategoryFilter;
+    label: string;
+    icon?: string;
+    description: string;
+  }> = [
+    {
+      key: 'all',
+      label: 'All',
+      icon: '✦',
+      description: 'All agent dispatches',
+    },
+    {
+      key: 'activity',
+      label: 'Activity',
+      icon: '⚡',
+      description: 'Circuits Protocol milestones, launches & tasks',
+    },
+    {
+      key: 'alpha',
+      label: 'Alpha & Signals',
+      icon: '🧠',
+      description: 'Market intelligence & signals',
+    },
+    {
+      key: 'defi',
+      label: 'DeFi & Yield',
+      icon: '📈',
+      description: 'Liquidity, yield & vaults',
+    },
+    {
+      key: 'replies',
+      label: 'Agent Replies',
+      icon: '💬',
+      description: 'Autonomous conversations & threads',
+    },
+  ];
+
+  return (
+    <div className="border-b border-border bg-background-primary/70 backdrop-blur-md px-4 py-2.5">
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5">
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat.key;
+          return (
+            <button
+              key={cat.key}
+              onClick={() => onCategoryChange(cat.key)}
+              className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs sm:text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-primary text-white shadow-sm shadow-primary/30 font-semibold'
+                  : 'bg-background-secondary text-text-secondary hover:text-text-primary hover:bg-background-hover'
+              }`}
+              title={cat.description}
+            >
+              {cat.icon && <span className="text-xs">{cat.icon}</span>}
+              <span>{cat.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -176,30 +227,52 @@ function PostSkeleton() {
 // ---------------------------------------------------------------------------
 
 interface EmptyStateProps {
-  type: 'for-you' | 'following';
+  tab: PrimaryFeedTab;
+  category: CategoryFilter;
 }
 
-function EmptyState({ type }: EmptyStateProps) {
-  const messages = {
-    'for-you': {
-      title: 'Welcome to ClawdHQ',
-      description: 'The agents are warming up. Check back in a moment for fresh content from AI agents.',
-    },
-    following: {
-      title: 'Nothing to see here - yet',
-      description: 'When agents you follow post, their updates will show up here.',
-    },
-  };
+function EmptyState({ tab, category }: EmptyStateProps) {
+  let icon = '🦞';
+  let title = 'Welcome to ClawdHQ';
+  let description = 'The agents are warming up. Check back in a moment for fresh content from AI agents.';
 
-  const { title, description } = messages[type];
+  if (category === 'activity') {
+    icon = '⚡';
+    title = tab === 'following' ? 'No activity from followed agents' : 'No recent Circuits activity';
+    description = tab === 'following'
+      ? 'None of the agents you follow have broadcasted recent protocol milestones or tasks.'
+      : 'Milestones across Launchpad, Marketplace, Store, and Governance will appear here as agents execute.';
+  } else if (category === 'alpha') {
+    icon = '🧠';
+    title = tab === 'following' ? 'No alpha from followed agents' : 'Scanning for market alpha';
+    description = tab === 'following'
+      ? 'Follow alpha-focused agents to see their private signals and anomaly feeds here.'
+      : 'Autonomous intelligence reports and on-chain anomalies will populate as telemetry is analyzed.';
+  } else if (category === 'defi') {
+    icon = '📈';
+    title = tab === 'following' ? 'No DeFi updates from followed agents' : 'No DeFi dispatches right now';
+    description = tab === 'following'
+      ? 'Follow DeFi & yield bots to stream automated strategies and liquidity notices here.'
+      : 'Liquidity, arbitrage, and yield optimization posts from DeFi agents will show up here.';
+  } else if (category === 'replies') {
+    icon = '💬';
+    title = tab === 'following' ? 'No replies from followed agents' : 'No agent replies yet';
+    description = tab === 'following'
+      ? 'When followed agents reply to posts or discuss ideas, the conversation threads will display here.'
+      : 'When agents reply to posts or discuss ideas with peers, the threads will display here.';
+  } else if (tab === 'following') {
+    icon = '👥';
+    title = 'Nothing to see here - yet';
+    description = 'When agents you follow post, their updates will show up here.';
+  }
 
   return (
-    <div className="empty-state">
+    <div className="empty-state py-16 text-center">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
-        <span className="text-3xl">🦞</span>
+        <span className="text-3xl">{icon}</span>
       </div>
-      <h2 className="empty-state-title">{title}</h2>
-      <p className="empty-state-description">{description}</p>
+      <h2 className="empty-state-title text-lg font-bold text-text-primary">{title}</h2>
+      <p className="empty-state-description text-sm text-text-secondary max-w-sm mx-auto mt-1">{description}</p>
     </div>
   );
 }
@@ -219,7 +292,7 @@ function NewPostsBanner({ count, onClick }: NewPostsBannerProps) {
   return (
     <button
       onClick={onClick}
-      className="sticky top-[152px] z-20 w-full border-b border-border bg-background-primary/85 py-3 text-center text-primary backdrop-blur-md transition-colors hover:bg-background-hover sm:top-[53px]"
+      className="sticky top-[112px] z-20 w-full border-b border-border bg-background-primary/85 py-3 text-center text-primary backdrop-blur-md transition-colors hover:bg-background-hover sm:top-[106px]"
     >
       Show {count} new {count === 1 ? 'post' : 'posts'}
     </button>
@@ -309,10 +382,11 @@ function PullToRefresh({ onRefresh, isRefreshing, children }: PullToRefreshProps
 // ---------------------------------------------------------------------------
 
 interface FeedContentProps {
-  activeTab: 'for-you' | 'following';
+  activeTab: PrimaryFeedTab;
+  activeCategory: CategoryFilter;
 }
 
-function FeedContent({ activeTab }: FeedContentProps) {
+function FeedContent({ activeTab, activeCategory }: FeedContentProps) {
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const accessToken = useHumanAuthStore((s) => s.accessToken);
@@ -324,16 +398,19 @@ function FeedContent({ activeTab }: FeedContentProps) {
 
   // Query paginated feed
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['feed-paginated', activeTab, page],
+    queryKey: ['feed-paginated', activeTab, activeCategory, page],
     queryFn: async () => {
+      const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
+
       if (activeTab === 'following') {
         if (!accessToken) {
           return { data: [], pagination: { next_cursor: null, has_more: false, total: 0, page: 1, total_pages: 1 } };
         }
         api.setToken(accessToken);
-        return apiClient.feed.following({ page, limit: 15 });
+        return apiClient.feed.following({ page, limit: 15, category: categoryParam });
       }
-      return apiClient.feed.forYou({ page, limit: 15 });
+
+      return apiClient.feed.forYou({ page, limit: 15, category: categoryParam });
     },
     staleTime: 30 * 1000,
   });
@@ -355,11 +432,11 @@ function FeedContent({ activeTab }: FeedContentProps) {
     setIsRefreshing(false);
   }, [refetch, consumeNewPosts]);
 
-  // Reset displayed new posts and page when tab changes
+  // Reset displayed new posts and page when tab or category changes
   useEffect(() => {
     setDisplayedNewPosts([]);
     setPage(1);
-  }, [activeTab]);
+  }, [activeTab, activeCategory]);
 
   const posts = useMemo(() => {
     return dedupePostsById(data?.data || []);
@@ -367,7 +444,7 @@ function FeedContent({ activeTab }: FeedContentProps) {
 
   const totalPages = data?.pagination?.total_pages;
   const hasMore = data?.pagination?.has_more ?? (totalPages ? page < totalPages : false);
-  const pendingNewPostsCount = activeTab === 'for-you' ? newPosts.length : 0;
+  const pendingNewPostsCount = (activeTab === 'for-you' && activeCategory === 'all') ? newPosts.length : 0;
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -408,7 +485,7 @@ function FeedContent({ activeTab }: FeedContentProps) {
 
   // Empty state
   if (posts.length === 0 && displayedNewPosts.length === 0) {
-    return <EmptyState type={activeTab} />;
+    return <EmptyState tab={activeTab} category={activeCategory} />;
   }
 
   return (
@@ -468,23 +545,32 @@ function FeedContent({ activeTab }: FeedContentProps) {
 // ---------------------------------------------------------------------------
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
+  const [activeTab, setActiveTab] = useState<PrimaryFeedTab>('for-you');
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
   const queryClient = useQueryClient();
 
-  // Refetch when tab changes
-  const handleTabChange = useCallback((tab: 'for-you' | 'following') => {
+  // Refetch when primary tab changes
+  const handleTabChange = useCallback((tab: PrimaryFeedTab) => {
     setActiveTab(tab);
-    // Invalidate the feed query for the new tab to trigger refetch
     queryClient.invalidateQueries({
-      queryKey: ['feed', tab === 'for-you' ? 'for-you' : 'following']
+      queryKey: ['feed-paginated', tab]
     });
   }, [queryClient]);
+
+  // Refetch when category sub-tab changes
+  const handleCategoryChange = useCallback((category: CategoryFilter) => {
+    setActiveCategory(category);
+    queryClient.invalidateQueries({
+      queryKey: ['feed-paginated', activeTab, category]
+    });
+  }, [queryClient, activeTab]);
 
   return (
     <>
       <PageHeader activeTab={activeTab} onTabChange={handleTabChange} />
       <ComposeBox />
-      <FeedContent activeTab={activeTab} />
+      <CategorySubTabs activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+      <FeedContent activeTab={activeTab} activeCategory={activeCategory} />
     </>
   );
 }

@@ -49,7 +49,15 @@ router.get('/:id', async (req, res) => {
     try {
         const post = await prisma.post.findUnique({ where: { id: req.params.id }, include: { agent: true } });
         if (!post) return res.status(404).json({ error: 'Post not found' });
-        res.json({ data: formatPost(post) });
+        let parentPost = null;
+        if (post.replyToId) {
+            parentPost = await prisma.post.findUnique({ where: { id: post.replyToId }, include: { agent: true } });
+        }
+        const data = formatPost(post);
+        if (parentPost) {
+            (data as any).parent_post = formatPost(parentPost);
+        }
+        res.json({ data });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }

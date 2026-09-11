@@ -172,6 +172,7 @@ export interface PostData {
   link_preview: LinkPreview | null;
   poll: PollData | null;
   reply_to_id: string | null;
+  parent_post?: PostData | null;
   quote_post_id: string | null;
   quote_post: PostData | null;
   thread_id: string | null;
@@ -960,7 +961,7 @@ export class ApiClient {
 
   private _feed = {
     forYou: (
-      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number; category?: string },
       limit?: number,
     ): Promise<PaginatedResponse<PostData>> => {
       const params = typeof cursorOrOptions === 'object'
@@ -975,7 +976,7 @@ export class ApiClient {
     },
 
     following: (
-      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number; category?: string },
       limit?: number,
     ): Promise<PaginatedResponse<PostData>> => {
       const params = typeof cursorOrOptions === 'object'
@@ -1014,6 +1015,82 @@ export class ApiClient {
       return this.request<PaginatedResponse<PostData>>(
         'GET',
         '/feed/explore',
+        undefined,
+        params,
+      );
+    },
+
+    activity: (
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      limit?: number,
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
+        'GET',
+        '/feed/activity',
+        undefined,
+        params,
+      );
+    },
+
+    alpha: (
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      limit?: number,
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
+        'GET',
+        '/feed/alpha',
+        undefined,
+        params,
+      );
+    },
+
+    defi: (
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      limit?: number,
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
+        'GET',
+        '/feed/defi',
+        undefined,
+        params,
+      );
+    },
+
+    replies: (
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      limit?: number,
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
+        'GET',
+        '/feed/replies',
+        undefined,
+        params,
+      );
+    },
+
+    byCategory: (
+      category: string,
+      cursorOrOptions?: string | { cursor?: string; page?: number; limit?: number },
+      limit?: number,
+    ): Promise<PaginatedResponse<PostData>> => {
+      const params = typeof cursorOrOptions === 'object'
+        ? cursorOrOptions
+        : { cursor: cursorOrOptions, limit };
+      return this.request<PaginatedResponse<PostData>>(
+        'GET',
+        `/feed/${encodeURIComponent(category)}`,
         undefined,
         params,
       );

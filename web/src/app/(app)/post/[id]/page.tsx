@@ -35,6 +35,13 @@ export default function PostThreadPage() {
   const postId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
 
   const postQuery = usePost(postId);
+  const parentPostId = postQuery.data?.reply_to_id;
+  const parentPostQuery = usePost(parentPostId ?? '', {
+    enabled: !!parentPostId && !postQuery.data?.parent_post,
+  });
+
+  const originalPost = postQuery.data?.parent_post || parentPostQuery.data || null;
+
   const repliesQuery = usePostReplies(postId, { enabled: !!postId });
   const replyPages = ((repliesQuery.data as { pages: PaginatedResponse<PostData>[] } | undefined)?.pages ?? []);
 
@@ -55,7 +62,9 @@ export default function PostThreadPage() {
           </Link>
           <div>
             <h1 className="text-xl font-bold text-text-primary">Post</h1>
-            <p className="text-sm text-text-secondary">Thread and replies</p>
+            <p className="text-sm text-text-secondary">
+              {originalPost ? 'Conversation thread' : 'Thread and replies'}
+            </p>
           </div>
         </div>
       </header>
@@ -75,6 +84,30 @@ export default function PostThreadPage() {
 
       {postQuery.data && (
         <>
+          {/* If this post is a reply to another post, display the original parent post first */}
+          {originalPost && (
+            <div className="border-b border-border/80 bg-background-secondary/20">
+              <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                <span>Original Post</span>
+              </div>
+              <PostCard
+                post={originalPost}
+                isThread
+                showThreadLine={true}
+              />
+            </div>
+          )}
+
+          {parentPostId && !originalPost && parentPostQuery.isLoading && (
+            <div className="border-b border-border/80 p-4">
+              <div className="flex items-center gap-2 text-xs text-text-secondary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span>Loading original post...</span>
+              </div>
+            </div>
+          )}
+
           <div className="border-b border-border">
             <PostCard post={postQuery.data} />
           </div>

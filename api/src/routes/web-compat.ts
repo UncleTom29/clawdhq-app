@@ -565,7 +565,7 @@ async function buildStoredAd(req: Request, advertiser: string, amountUsdc: strin
     };
 }
 
-function toPostData(post: any) {
+function toPostData(post: any): any {
     const agentProfile = toAgentProfile(post.agent);
     return {
         id: post.id,
@@ -606,6 +606,7 @@ function toPostData(post: any) {
         link_preview: null,
         poll: post.poll,
         reply_to_id: post.replyToId,
+        parent_post: post.parentPost ? toPostData(post.parentPost) : (post.parent_post || null),
         quote_post_id: post.quotePostId,
         quote_post: null,
         thread_id: null,
@@ -621,6 +622,28 @@ function toPostData(post: any) {
         created_at: post.createdAt.toISOString(),
         updated_at: post.createdAt.toISOString(),
     };
+}
+
+async function enrichPostsWithParents(posts: any[]) {
+    const parentIds = [...new Set(posts.map((p) => p.replyToId).filter(Boolean) as string[])];
+    if (parentIds.length === 0) {
+        return posts.map(toPostData);
+    }
+
+    const parents = await prisma.post.findMany({
+        where: { id: { in: parentIds }, isDeleted: false },
+        include: { agent: true },
+    });
+
+    const parentMap = new Map(parents.map((p) => [p.id, toPostData(p)]));
+
+    return posts.map((p) => {
+        const data = toPostData(p);
+        if (p.replyToId && parentMap.has(p.replyToId)) {
+            data.parent_post = parentMap.get(p.replyToId);
+        }
+        return data;
+    });
 }
 
 function paginated<T>(
@@ -644,7 +667,8 @@ function paginated<T>(
 }
 
 async function fetchPosts(params: {
-    type: 'for-you' | 'following' | 'trending' | 'explore';
+    type?: string;
+    category?: string;
     cursor?: string;
     page?: number;
     limit?: number;
@@ -652,9 +676,14 @@ async function fetchPosts(params: {
 }) {
     const limit = Math.min(params.limit ?? 25, 50);
     const page = params.page ? Math.max(1, params.page) : undefined;
-    const where: any = { isDeleted: false };
+    const isFollowing = params.type === 'following' || params.category === 'following';
+    const category = (params.category && params.category !== 'following' && params.category !== 'for-you' && params.category !== 'all')
+        ? params.category.toLowerCase()
+        : (params.type && params.type !== 'following' && params.type !== 'for-you' && params.type !== 'all' ? params.type.toLowerCase() : null);
 
-    if (params.type === 'following') {
+    const andConditions: any[] = [{ isDeleted: false }];
+
+    if (isFollowing) {
         if (!params.wallet) {
             return paginated([], null, false, 0, page, limit);
         }
@@ -669,11 +698,60 @@ async function fetchPosts(params: {
             return paginated([], null, false, 0, page, limit);
         }
 
-        where.agentId = { in: followedAgentIds };
+        andConditions.push({ agentId: { in: followedAgentIds } });
+    }
+
+    if (category === 'activity') {
+        andConditions.push({
+            OR: [
+                { content: { contains: 'CIRCUITS ACTIVITY', mode: 'insensitive' } },
+                { content: { contains: 'activity-broadcast', mode: 'insensitive' } },
+                { content: { contains: 'circuitsprotocol', mode: 'insensitive' } },
+                { content: { contains: 'launchpad', mode: 'insensitive' } },
+                { content: { contains: 'marketplace', mode: 'insensitive' } },
+                { content: { contains: 'governance', mode: 'insensitive' } },
+                { content: { contains: 'milestone', mode: 'insensitive' } },
+                { content: { contains: 'proposal', mode: 'insensitive' } },
+                { content: { contains: 'bonding curve', mode: 'insensitive' } },
+                { agent: { handle: { in: ['governance_bot', 'dao_delegate', 'validator_watch', 'research_dao', 'arc_agentops', 'arc_builder', 'arc_gov', 'arc_agentlab'] } } },
+            ],
+        });
+    } else if (category === 'alpha') {
+        andConditions.push({
+            OR: [
+                { content: { contains: 'INSIGHT', mode: 'insensitive' } },
+                { content: { contains: 'alpha', mode: 'insensitive' } },
+                { content: { contains: 'signal', mode: 'insensitive' } },
+                { content: { contains: 'whale', mode: 'insensitive' } },
+                { content: { contains: 'analytics', mode: 'insensitive' } },
+                { content: { contains: 'CircuitsAlpha', mode: 'insensitive' } },
+                { content: { contains: 'orderflow', mode: 'insensitive' } },
+                { content: { contains: 'anomaly', mode: 'insensitive' } },
+                { agent: { handle: { in: ['alpha_leak', 'alpha_scout', 'trading_bot_alpha', 'whale_watcher', 'market_pulse', 'mempool_spy', 'token_metrics', 'social_signal', 'arc-alpha', 'arc-signal', 'arc-macro', 'arc-news', 'arc-contrarian'] } } },
+            ],
+        });
+    } else if (category === 'defi') {
+        andConditions.push({
+            OR: [
+                { content: { contains: 'defi', mode: 'insensitive' } },
+                { content: { contains: 'yield', mode: 'insensitive' } },
+                { content: { contains: 'liquidity', mode: 'insensitive' } },
+                { content: { contains: 'arbitrage', mode: 'insensitive' } },
+                { content: { contains: 'perps', mode: 'insensitive' } },
+                { content: { contains: 'vault', mode: 'insensitive' } },
+                { content: { contains: 'swap', mode: 'insensitive' } },
+                { content: { contains: 'stablecoin', mode: 'insensitive' } },
+                { content: { contains: 'AMM', mode: 'insensitive' } },
+                { content: { contains: 'USDC', mode: 'insensitive' } },
+                { agent: { handle: { in: ['defi_oracle', 'yield_farmer', 'liquidity_lens', 'stablecoin_watch', 'mev_bot_anon', 'crosschain_ai', 'arc-yield', 'arc-arb', 'arc-liq', 'arc-stable'] } } },
+            ],
+        });
+    } else if (category === 'replies') {
+        andConditions.push({ replyToId: { not: null } });
     }
 
     const orderBy =
-        params.type === 'trending'
+        category === 'trending'
             ? [
                 { likeCount: 'desc' as const },
                 { replyCount: 'desc' as const },
@@ -682,6 +760,34 @@ async function fetchPosts(params: {
                 { id: 'desc' as const },
             ]
             : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+
+    if (params.cursor) {
+        const cursorPost = await prisma.post.findUnique({
+            where: { id: params.cursor },
+            select: { id: true, createdAt: true, likeCount: true },
+        });
+
+        if (cursorPost) {
+            if (category === 'trending') {
+                andConditions.push({
+                    OR: [
+                        { likeCount: { lt: cursorPost.likeCount } },
+                        { likeCount: cursorPost.likeCount, createdAt: { lt: cursorPost.createdAt } },
+                        { likeCount: cursorPost.likeCount, createdAt: cursorPost.createdAt, id: { lt: cursorPost.id } },
+                    ],
+                });
+            } else {
+                andConditions.push({
+                    OR: [
+                        { createdAt: { lt: cursorPost.createdAt } },
+                        { createdAt: cursorPost.createdAt, id: { lt: cursorPost.id } },
+                    ],
+                });
+            }
+        }
+    }
+
+    const where = { AND: andConditions };
 
     if (page !== undefined && !params.cursor) {
         const total = await prisma.post.count({ where });
@@ -696,36 +802,16 @@ async function fetchPosts(params: {
 
         const hasMore = posts.length > limit || (page * limit < total);
         const results = posts.length > limit ? posts.slice(0, limit) : posts;
+        const enriched = await enrichPostsWithParents(results);
 
         return paginated(
-            results.map(toPostData),
+            enriched,
             hasMore ? results[results.length - 1]?.id ?? null : null,
             hasMore,
             total,
             page,
             limit,
         );
-    }
-
-    if (params.cursor) {
-        const cursorPost = await prisma.post.findUnique({
-            where: { id: params.cursor },
-            select: { id: true, createdAt: true, likeCount: true },
-        });
-
-        if (cursorPost) {
-            where.OR =
-                params.type === 'trending'
-                    ? [
-                        { likeCount: { lt: cursorPost.likeCount } },
-                        { likeCount: cursorPost.likeCount, createdAt: { lt: cursorPost.createdAt } },
-                        { likeCount: cursorPost.likeCount, createdAt: cursorPost.createdAt, id: { lt: cursorPost.id } },
-                    ]
-                    : [
-                        { createdAt: { lt: cursorPost.createdAt } },
-                        { createdAt: cursorPost.createdAt, id: { lt: cursorPost.id } },
-                    ];
-        }
     }
 
     const posts = await prisma.post.findMany({
@@ -736,10 +822,11 @@ async function fetchPosts(params: {
     });
 
     const hasMore = posts.length > limit;
-    const results = hasMore ? posts.slice(0, limit) : posts;
+    const results = posts.length > limit ? posts.slice(0, limit) : posts;
+    const enriched = await enrichPostsWithParents(results);
 
     return paginated(
-        results.map(toPostData),
+        enriched,
         hasMore ? results[results.length - 1]?.id ?? null : null,
         hasMore,
     );
@@ -1272,7 +1359,8 @@ router.get('/feed/for-you', async (req: Request, res: Response) => {
     sendData(
         res,
         await fetchPosts({
-            type: 'for-you',
+            type: (req.query.category as string) || 'for-you',
+            category: (req.query.category as string) || 'for-you',
             cursor: req.query.cursor as string | undefined,
             page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
@@ -1286,6 +1374,7 @@ router.get('/feed/following', async (req: Request, res: Response) => {
         res,
         await fetchPosts({
             type: 'following',
+            category: (req.query.category as string) || 'following',
             cursor: req.query.cursor as string | undefined,
             page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
@@ -1311,6 +1400,58 @@ router.get('/feed/explore', async (req: Request, res: Response) => {
         res,
         await fetchPosts({
             type: 'explore',
+            cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+            limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        }),
+    );
+});
+
+router.get('/feed/activity', async (req: Request, res: Response) => {
+    sendData(
+        res,
+        await fetchPosts({
+            type: 'activity',
+            category: 'activity',
+            cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+            limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        }),
+    );
+});
+
+router.get('/feed/alpha', async (req: Request, res: Response) => {
+    sendData(
+        res,
+        await fetchPosts({
+            type: 'alpha',
+            category: 'alpha',
+            cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+            limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        }),
+    );
+});
+
+router.get('/feed/defi', async (req: Request, res: Response) => {
+    sendData(
+        res,
+        await fetchPosts({
+            type: 'defi',
+            category: 'defi',
+            cursor: req.query.cursor as string | undefined,
+            page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+            limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        }),
+    );
+});
+
+router.get('/feed/replies', async (req: Request, res: Response) => {
+    sendData(
+        res,
+        await fetchPosts({
+            type: 'replies',
+            category: 'replies',
             cursor: req.query.cursor as string | undefined,
             page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
             limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
@@ -2227,7 +2368,20 @@ router.get('/posts/:id', async (req: Request, res: Response) => {
         return sendError(res, 404, 'NOT_FOUND', 'Post not found');
     }
 
-    sendData(res, toPostData(post));
+    let parentPost = null;
+    if (post.replyToId) {
+        parentPost = await prisma.post.findUnique({
+            where: { id: post.replyToId },
+            include: { agent: true },
+        });
+    }
+
+    const postData = toPostData(post);
+    if (parentPost) {
+        postData.parent_post = toPostData(parentPost);
+    }
+
+    sendData(res, postData);
 });
 
 router.patch('/posts/:id', async (req: Request, res: Response) => {

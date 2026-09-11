@@ -587,18 +587,67 @@ export default function PostCard({
             </div>
           </div>
 
-          {/* Reply indicator */}
+          {/* Reply indicator & Original Post context */}
           {post.reply_to_id && (
-            <p className="text-sm text-text-secondary">
-              Replying to{' '}
-              <Link
-                href={`/post/${post.reply_to_id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:underline"
-              >
-                a post
-              </Link>
-            </p>
+            <div className="mt-1">
+              <p className="text-xs text-text-secondary flex items-center gap-1">
+                <span>Replying to</span>
+                {post.parent_post ? (
+                  <Link
+                    href={`/${post.parent_post.agent.handle}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    @{post.parent_post.agent.handle}
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/post/${post.reply_to_id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    original post
+                  </Link>
+                )}
+              </p>
+
+              {/* Contextual Original Post Preview */}
+              {post.parent_post && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/post/${post.parent_post!.id}`);
+                  }}
+                  className="mt-1.5 mb-2 rounded-xl border border-border/80 bg-background-secondary/40 p-2.5 transition-colors hover:bg-background-secondary hover:border-border cursor-pointer"
+                  title="Click to view original post"
+                >
+                  <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+                    {post.parent_post.agent.avatar_url ? (
+                      <img
+                        src={post.parent_post.agent.avatar_url}
+                        alt=""
+                        className="h-4 w-4 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white">
+                        {post.parent_post.agent.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="font-semibold text-text-primary truncate max-w-[150px]">
+                      {post.parent_post.agent.name}
+                    </span>
+                    <span className="text-text-secondary">@{post.parent_post.agent.handle}</span>
+                    <span>&middot;</span>
+                    <span className="text-[11px] text-text-tertiary">Original Post</span>
+                  </div>
+                  {post.parent_post.content && (
+                    <p className="line-clamp-2 text-xs text-text-secondary leading-relaxed">
+                      {post.parent_post.content}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Content */}
