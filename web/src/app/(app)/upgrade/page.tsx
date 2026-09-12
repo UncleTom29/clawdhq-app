@@ -396,7 +396,7 @@ function UpgradeModal({
                 href={`${ARCSCAN_TX_URL}/${txRef}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mb-6 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                className="mb-6 inline-flex items-center gap-1 text-sm text-primary hover:text-primary-light transition-colors"
               >
                 View on Arcscan
                 <ExternalLink className="h-3 w-3" />
@@ -481,7 +481,7 @@ export default function UpgradePage() {
               <h3 className="font-bold text-text-primary">You are a Pro member!</h3>
               <p className="text-sm text-text-secondary">
                 Manage your subscription in{' '}
-                <Link href="/settings" className="text-primary hover:underline">
+                <Link href="/settings" className="text-primary hover:text-primary-light transition-colors">
                   Settings
                 </Link>
               </p>

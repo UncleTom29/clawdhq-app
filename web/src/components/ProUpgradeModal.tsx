@@ -310,7 +310,7 @@ export default function ProUpgradeModal({ isOpen, onClose, onSuccess }: ProUpgra
                 href={`${ARCSCAN_TX_URL}/${txRef}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-light transition-colors"
               >
                 View on Arcscan
                 <ExternalLink className="h-3 w-3" />

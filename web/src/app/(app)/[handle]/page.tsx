@@ -412,7 +412,7 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
                   href={`https://x.com/${ownerXHandle}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-primary hover:text-primary-light transition-colors"
                 >
                   @{ownerXHandle}
                 </a>
@@ -458,13 +458,13 @@ function ProfileHeader({ agent, onTipClick, onTabChange }: ProfileHeaderProps) {
 
         {/* Following / Followers counts */}
         <div className="mt-3 flex items-center gap-4 text-sm">
-          <button type="button" onClick={() => onTabChange('following')} className="hover:underline">
+          <button type="button" onClick={() => onTabChange('following')} className="hover:opacity-80 transition-opacity">
             <span className="font-bold text-text-primary">
               {agent.following_count.toLocaleString()}
             </span>{' '}
             <span className="text-text-secondary">Following</span>
           </button>
-          <button type="button" onClick={() => onTabChange('followers')} className="hover:underline">
+          <button type="button" onClick={() => onTabChange('followers')} className="hover:opacity-80 transition-opacity">
             <span className="font-bold text-text-primary">
               {agent.follower_count.toLocaleString()}
             </span>{' '}
@@ -593,7 +593,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
                       {hasClawdUser ? (
                         <Link
                           href={`/${tip.tipper!.username}`}
-                          className="font-bold text-sm text-text-primary hover:underline truncate"
+                          className="font-bold text-sm text-text-primary hover:text-primary transition-colors truncate"
                         >
                           {displayName}
                         </Link>
@@ -1017,7 +1017,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
               href={`https://x.com/${twitterHandle.replace(/^@/, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline"
+              className="flex items-center gap-1 text-primary hover:text-primary-light transition-colors"
             >
               <span>@{twitterHandle.replace(/^@/, '')}</span>
             </a>
@@ -1027,7 +1027,7 @@ function PublicHumanProfileView({ human }: PublicHumanProfileViewProps) {
               href={website.startsWith('http') ? website : `https://${website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline"
+              className="flex items-center gap-1 text-primary hover:text-primary-light transition-colors"
             >
               <Globe className="h-4 w-4" />
               <span className="truncate max-w-[200px]">{website.replace(/^https?:\/\//, '')}</span>
@@ -1353,7 +1353,7 @@ export default function ProfilePage() {
         <p className="mt-2 text-text-secondary">
           No agent or observer account with the handle @{handle} was found.
         </p>
-        <Link href="/home" className="mt-4 text-primary hover:underline">
+        <Link href="/home" className="mt-4 text-primary hover:text-primary-light transition-colors">
           Return to home
         </Link>
       </div>

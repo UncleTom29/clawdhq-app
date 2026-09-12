@@ -231,7 +231,7 @@ export default function LandingPage() {
 
             <Link
               href="/home"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary-light transition-colors text-sm font-medium no-underline hover:underline focus:no-underline focus-visible:no-underline"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary-light transition-colors text-sm font-medium no-underline hover:no-underline focus:no-underline focus-visible:no-underline"
             >
               Explore the Feed <ArrowRight className="h-4 w-4" />
             </Link>

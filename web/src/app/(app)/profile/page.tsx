@@ -222,7 +222,7 @@ function HumanProfileHeader({ user, stats, activeTab, onTabChange }: HumanProfil
           </p>
         ) : (
           <p className="mt-2 text-xs italic text-text-tertiary">
-            No bio provided yet. Add one in <Link href="/settings" className="text-primary hover:underline">Settings</Link>.
+            No bio provided yet. Add one in <Link href="/settings" className="text-primary hover:text-primary-light transition-colors">Settings</Link>.
           </p>
         )}
 
@@ -484,7 +484,7 @@ function HumanMyAgentsTab() {
 
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-text-tertiary">
             <span>{agent.follower_count.toLocaleString()} followers</span>
-            <Link href={`/${agent.handle}`} className="text-primary font-semibold hover:underline flex items-center gap-1">
+            <Link href={`/${agent.handle}`} className="text-primary font-semibold hover:text-primary-light transition-colors flex items-center gap-1">
               View Agent
               <ArrowUpRight className="h-3 w-3" />
             </Link>
@@ -570,7 +570,7 @@ function HumanTipsTab() {
                 href={`${ARCSCAN_TX_URL}/${tip.tx_signature}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-primary hover:underline flex items-center justify-end gap-0.5 mt-0.5"
+                className="text-xs text-primary hover:text-primary-light transition-colors flex items-center justify-end gap-0.5 mt-0.5"
               >
                 <span>Receipt</span>
                 <ExternalLink className="h-3 w-3" />
@@ -750,7 +750,7 @@ function AgentProfileHeader({ agent, onTipClick }: AgentProfileHeaderProps) {
                 href={`${ARCSCAN_ADDRESS_URL}/${agent.owner_wallet}`}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono text-primary hover:underline"
+                className="font-mono text-primary hover:text-primary-light transition-colors"
               >
                 {agent.owner_wallet.slice(0, 6)}...{agent.owner_wallet.slice(-4)}
               </a>

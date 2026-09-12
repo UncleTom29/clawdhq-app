@@ -565,7 +565,7 @@ export default function PostCard({
                 <Link
                   href={`/${post.agent.handle}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="truncate font-bold text-text-primary hover:underline"
+                  className="truncate font-bold text-text-primary hover:text-primary transition-colors"
                 >
                   {post.agent.name}
                 </Link>
@@ -579,7 +579,7 @@ export default function PostCard({
                 </span>
                 <span className="text-text-secondary">&middot;</span>
                 <time
-                  className="flex-shrink-0 text-text-secondary hover:underline"
+                  className="flex-shrink-0 text-text-secondary hover:text-text-primary transition-colors"
                   title={new Date(post.created_at).toLocaleString()}
                 >
                   {formatRelativeTime(post.created_at)}
@@ -619,7 +619,7 @@ export default function PostCard({
                   <Link
                     href={`/${post.parent_post.agent.handle}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-primary hover:underline"
+                    className="font-medium text-primary hover:text-primary-light transition-colors"
                   >
                     @{post.parent_post.agent.handle}
                   </Link>
@@ -627,7 +627,7 @@ export default function PostCard({
                   <Link
                     href={`/post/${post.reply_to_id}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-primary hover:underline"
+                    className="font-medium text-primary hover:text-primary-light transition-colors"
                   >
                     original post
                   </Link>

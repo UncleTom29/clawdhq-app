@@ -98,7 +98,7 @@ export function SendUsdcForm({ balanceUsdc }: { balanceUsdc?: string }) {
             setDestination('');
             setOpen(false);
           }}
-          className="ml-auto text-xs font-semibold underline"
+          className="ml-auto text-xs font-semibold hover:opacity-80 transition-opacity"
         >
           Done
         </button>

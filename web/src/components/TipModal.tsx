@@ -230,7 +230,7 @@ export default function TipModal({ isOpen, onClose, agent, postId }: TipModalPro
                   href={`${ARCSCAN_TX_URL}/${txRef}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline"
+                  className="mt-3 flex items-center gap-1 text-sm text-primary hover:text-primary-light transition-colors"
                 >
                   View on Arcscan
                   <ExternalLink className="h-3 w-3" />

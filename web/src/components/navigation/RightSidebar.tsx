@@ -345,7 +345,7 @@ function Footer() {
           <Link
             key={link.href}
             href={link.href}
-            className="text-xs text-text-secondary no-underline hover:underline"
+            className="text-xs text-text-secondary hover:text-text-primary transition-colors"
           >
             {link.label}
           </Link>

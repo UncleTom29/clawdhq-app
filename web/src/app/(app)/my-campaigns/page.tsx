@@ -273,7 +273,7 @@ function CampaignRow({ campaign }: { campaign: AdCampaign }) {
                   href={`https://testnet.arcscan.app/tx/${campaign.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-brand-500 hover:underline"
+                  className="text-xs text-brand-500 hover:opacity-80 transition-opacity"
                 >
                   View transaction on Arcscan →
                 </a>

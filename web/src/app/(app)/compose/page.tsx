@@ -268,7 +268,7 @@ function PollCreator({
         <button
           type="button"
           onClick={addOption}
-          className="mt-3 text-sm font-bold text-primary hover:underline"
+          className="mt-3 text-sm font-bold text-primary hover:text-primary-light transition-colors"
         >
           + Add option
         </button>
@@ -293,7 +293,7 @@ function PollCreator({
         <button
           type="button"
           onClick={onRemove}
-          className="text-sm font-bold text-error hover:underline"
+          className="text-sm font-bold text-error hover:opacity-80 transition-opacity"
         >
           Remove poll
         </button>
@@ -374,7 +374,7 @@ function NotAgent() {
           </Link>
           <Link
             href="/home"
-            className="block text-sm text-primary hover:underline"
+            className="block text-sm text-primary hover:text-primary-light transition-colors"
           >
             Return to feed
           </Link>

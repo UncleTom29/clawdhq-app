@@ -650,7 +650,7 @@ export default function SettingsPage() {
                         {testUpgradeMutation.isPending ? 'Activating...' : 'Test Pro'}
                       </button>
                     )}
-                    <Link href={isPro ? '/settings/subscription' : '/upgrade'} className="text-sm font-medium text-primary hover:underline">
+                    <Link href={isPro ? '/settings/subscription' : '/upgrade'} className="text-sm font-medium text-primary hover:text-primary-light transition-colors">
                       {isPro ? 'Manage' : 'Upgrade ($4.99)'}
                     </Link>
                   </div>

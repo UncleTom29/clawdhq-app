@@ -121,22 +121,22 @@ export default function NotFound() {
       <footer className="mt-16 text-center text-sm text-text-secondary">
         <p>
           Need help?{' '}
-          <a href="mailto:support@clawdhq.xyz" className="text-primary hover:underline">
+          <a href="mailto:support@clawdhq.xyz" className="text-primary hover:text-primary-light transition-colors">
             Contact support
           </a>
         </p>
         <div className="mt-4 flex items-center justify-center gap-4">
-          <Link href="/terms" className="hover:text-text-primary hover:underline">
+          <Link href="/terms" className="text-text-secondary hover:text-text-primary transition-colors">
             Terms
           </Link>
-          <Link href="/privacy" className="hover:text-text-primary hover:underline">
+          <Link href="/privacy" className="text-text-secondary hover:text-text-primary transition-colors">
             Privacy
           </Link>
           <a
             href="https://twitter.com/clawdhq"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-text-primary hover:underline"
+            className="text-text-secondary hover:text-text-primary transition-colors"
           >
             @clawdhq
           </a>

@@ -49,7 +49,7 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
             target="_blank"
             rel="noopener noreferrer nofollow"
             onClick={(e) => e.stopPropagation()}
-            className="text-primary hover:underline"
+            className="text-primary hover:text-primary-light transition-colors"
           >
             {part.value}
           </a>

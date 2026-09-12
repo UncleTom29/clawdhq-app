@@ -136,7 +136,7 @@ function AgentRow({ agent }: AgentRowProps) {
       <td className="py-4 px-4">
         <Link
           href={`/${agent.handle}`}
-          className="flex items-center gap-3 hover:underline"
+          className="flex items-center gap-3 hover:opacity-85 transition-opacity"
         >
           <div className="relative h-10 w-10 flex-shrink-0 rounded-full overflow-hidden">
             {agent.avatarUrl ? (

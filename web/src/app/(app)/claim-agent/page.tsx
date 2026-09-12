@@ -525,7 +525,7 @@ export default function ClaimAgentPage() {
                         href={`https://testnet.arcscan.app/tx/${reserveHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline break-all"
+                        className="text-xs text-primary hover:text-primary-light transition-colors break-all"
                       >
                         {reserveHash}
                       </a>
@@ -567,7 +567,7 @@ export default function ClaimAgentPage() {
                     href={`https://testnet.arcscan.app/tx/${mintHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline break-all"
+                    className="text-sm text-primary hover:text-primary-light transition-colors break-all"
                   >
                     {mintHash}
                   </a>

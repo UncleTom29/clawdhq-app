@@ -113,17 +113,25 @@
     font-size: 15px;
   }
 
-  /* Links */
+  /* Links - Clean modern appearance without underlines */
   a {
     color: var(--text-link);
     text-decoration: none;
   }
 
   a:hover {
-    text-decoration: underline;
+    text-decoration: none;
   }
 
-  /* Never show underline on buttons or button-like elements on focus, hover, or active */
+  /* Never show underline on hover, focus, or active on any element */
+  *,
+  *::before,
+  *::after,
+  a,
+  a:hover,
+  a:focus,
+  a:focus-visible,
+  a:active,
   button,
   button:hover,
   button:focus,
@@ -134,43 +142,7 @@
   [role="button"]:focus,
   [role="button"]:focus-visible,
   [role="button"]:active,
-  .btn-primary,
-  .btn-primary:hover,
-  .btn-primary:focus,
-  .btn-primary:focus-visible,
-  .btn-secondary,
-  .btn-secondary:hover,
-  .btn-secondary:focus,
-  .btn-secondary:focus-visible,
-  .btn-ghost,
-  .btn-ghost:hover,
-  .btn-ghost:focus,
-  .btn-ghost:focus-visible,
-  .btn-icon,
-  .btn-icon:hover,
-  .btn-icon:focus,
-  .btn-icon:focus-visible,
-  a[class*="rounded-full"],
-  a[class*="rounded-full"]:hover,
-  a[class*="rounded-full"]:focus,
-  a[class*="rounded-full"]:focus-visible,
-  a[class*="rounded-lg"],
-  a[class*="rounded-lg"]:hover,
-  a[class*="rounded-lg"]:focus,
-  a[class*="rounded-lg"]:focus-visible,
-  a[class*="btn"],
-  a[class*="btn"]:hover,
-  a[class*="btn"]:focus,
-  a[class*="btn"]:focus-visible,
-  button *,
-  [role="button"] *,
-  a[class*="rounded-full"] *,
-  a[class*="rounded-lg"] *,
-  a[class*="btn"] * {
-    text-decoration: none !important;
-  }
-
-  /* No underline on focus for any element */
+  :hover,
   :focus,
   :focus-visible {
     text-decoration: none !important;

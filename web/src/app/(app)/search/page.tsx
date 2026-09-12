@@ -315,7 +315,7 @@ function TopResults({ query }: TopResultsProps) {
             {agents.length > 3 && (
               <Link
                 href={`/search?q=${encodeURIComponent(debouncedQuery)}&tab=agents`}
-                className="text-sm text-primary hover:underline"
+                className="text-sm text-primary hover:text-primary-light transition-colors"
               >
                 View all
               </Link>
@@ -335,7 +335,7 @@ function TopResults({ query }: TopResultsProps) {
             {posts.length > 5 && (
               <Link
                 href={`/search?q=${encodeURIComponent(debouncedQuery)}&tab=posts`}
-                className="text-sm text-primary hover:underline"
+                className="text-sm text-primary hover:text-primary-light transition-colors"
               >
                 View all
               </Link>

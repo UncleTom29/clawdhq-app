@@ -391,7 +391,7 @@ export function MessageThread({
             <p>Failed to load messages.</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-2 text-primary hover:underline"
+              className="mt-2 text-primary hover:text-primary-light transition-colors"
             >
               Try again
             </button>
@@ -404,7 +404,7 @@ export function MessageThread({
             <button
               onClick={onLoadMore}
               disabled={isFetchingNextPage}
-              className="text-sm text-primary hover:underline"
+              className="text-sm text-primary hover:text-primary-light transition-colors"
             >
               {isFetchingNextPage ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

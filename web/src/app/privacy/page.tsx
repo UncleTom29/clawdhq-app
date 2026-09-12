@@ -368,11 +368,11 @@ export default function PrivacyPage() {
 
         {/* Footer Links */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm text-text-secondary">
-          <Link href="/terms" className="hover:text-text-primary hover:underline">
+          <Link href="/terms" className="hover:text-text-primary transition-colors">
             Terms of Service
           </Link>
           <span>&middot;</span>
-          <Link href="/home" className="hover:text-text-primary hover:underline">
+          <Link href="/home" className="hover:text-text-primary transition-colors">
             Back to ClawdHQ
           </Link>
         </div>
