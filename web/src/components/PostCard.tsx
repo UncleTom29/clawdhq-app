@@ -10,7 +10,7 @@ import {
   Bookmark,
   Share,
   MoreHorizontal,
-  BarChart3,
+  Briefcase,
   DollarSign,
   Bot,
   UserPlus,
@@ -19,7 +19,30 @@ import {
   Check,
   LogIn,
 } from 'lucide-react';
-import type { PostData } from '@/lib/api-client';
+import type { PostData, AgentProfile } from '@/lib/api-client';
+
+const CIRCUITS_APP_URL = process.env.NEXT_PUBLIC_CIRCUITS_APP_URL || 'https://app.circuitsprotocol.com';
+
+export function isCircuitsAgent(agent?: AgentProfile | null): boolean {
+  if (!agent) return false;
+  const handle = (agent.handle || '').toLowerCase();
+  const name = (agent.name || '').toLowerCase();
+  const skills = Array.isArray(agent.skills) ? agent.skills.map((s) => s.toLowerCase()) : [];
+
+  if (handle.startsWith('arc') || name.startsWith('arc')) return true;
+  if (skills.some((s) => s.includes('arc') || s.includes('circuits'))) return true;
+
+  const circuitsHandles = [
+    'governance_bot', 'dao_delegate', 'validator_watch', 'research_dao',
+    'arc_agentops', 'arc_builder', 'arc_gov', 'arc_agentlab', 'alpha_leak',
+    'alpha_scout', 'trading_bot_alpha', 'whale_watcher', 'market_pulse',
+    'mempool_spy', 'token_metrics', 'social_signal', 'defi_oracle',
+    'yield_farmer', 'liquidity_lens', 'stablecoin_watch', 'mev_bot_anon',
+    'crosschain_ai', 'glitch-arc', 'chad-gpt', 'arc_contrarian', 'arc_liq',
+    'arc_yield', 'arc_macro', 'arc_scout_2', 'arc_scout'
+  ];
+  return circuitsHandles.includes(handle) || Boolean(agent.token_id);
+}
 import { useWebSocket } from '@/lib/websocket';
 import { LinkifiedText, LinkPreviewCard, extractFirstUrl } from '@/components/LinkPreview';
 import {
@@ -782,12 +805,16 @@ export default function PostCard({
           <div className="mt-3 -ml-2 flex w-full max-w-none items-center justify-between sm:max-w-[425px]">
             {/* Reply */}
             <button
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/post/${post.id}`);
+              }}
               className="btn-icon-reply group flex items-center gap-1"
+              title="Reply"
             >
               <MessageCircle className="h-[18px] w-[18px]" />
               <span className="text-xs group-hover:text-interaction-reply">
-                {formatCount(engagement.replies)}
+                {formatCount(engagement.replies || post.reply_count || 0)}
               </span>
             </button>
 
@@ -826,16 +853,36 @@ export default function PostCard({
               </span>
             </button>
 
-            {/* Views */}
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="btn-icon-share group flex items-center gap-1"
-            >
-              <BarChart3 className="h-[18px] w-[18px]" />
-              <span className="text-xs group-hover:text-interaction-view">
-                {formatCount(engagement.views)}
-              </span>
-            </button>
+            {/* Hire */}
+            {isCircuitsAgent(post.agent) ? (
+              <a
+                href={`${CIRCUITS_APP_URL}/app/agents?hire=${encodeURIComponent(post.agent.token_id?.replace(/^#/, '') || post.agent.handle || post.agent.id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="btn-icon group flex items-center gap-1 text-primary hover:bg-primary/10 transition-colors"
+                title={`Directly hire ${post.agent.name} on Circuits Protocol`}
+              >
+                <Briefcase className="h-[18px] w-[18px]" />
+                <span className="text-xs font-semibold group-hover:text-primary">
+                  Hire
+                </span>
+              </a>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`${CIRCUITS_APP_URL}/app/marketplace`, '_blank');
+                }}
+                className="btn-icon group flex items-center gap-1 text-text-secondary hover:bg-primary/10 hover:text-primary transition-colors"
+                title="Hire via Circuits Protocol Marketplace"
+              >
+                <Briefcase className="h-[18px] w-[18px]" />
+                <span className="text-xs font-semibold group-hover:text-primary">
+                  Hire
+                </span>
+              </button>
+            )}
 
             {/* Bookmark & Share */}
             <div className="flex items-center relative">

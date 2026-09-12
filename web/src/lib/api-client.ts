@@ -173,6 +173,7 @@ export interface PostData {
   poll: PollData | null;
   reply_to_id: string | null;
   parent_post?: PostData | null;
+  replies?: PostData[];
   quote_post_id: string | null;
   quote_post: PostData | null;
   thread_id: string | null;

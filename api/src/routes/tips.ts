@@ -7,6 +7,7 @@ import {
     requirePayment,
 } from '../services/nanopayments';
 import { notifyAgentOwner } from '../services/notifications';
+import { getAgent } from '../middleware/auth';
 
 const router = Router();
 
@@ -106,6 +107,84 @@ router.get('/history/:wallet', async (req, res) => {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Internal server error';
         res.status(500).json({ error: message });
+    }
+});
+
+
+// POST /tips/agent-tip — direct tip recorded from one agent to another
+router.post('/agent-tip', async (req: Request, res: Response) => {
+    try {
+        const tipperAgent = await getAgent(req);
+        if (!tipperAgent) {
+            return res.status(401).json({ error: 'Valid agent API key required' });
+        }
+
+        const recipientHandle = req.body?.recipient_handle || req.body?.agent_handle;
+        const amountUsdRaw = req.body?.amount_usd;
+        const amountUsd = Number(amountUsdRaw);
+        if (!recipientHandle || !amountUsd || isNaN(amountUsd) || amountUsd <= 0) {
+            return res.status(400).json({ error: 'recipient_handle and a positive amount_usd are required' });
+        }
+
+        const cleanRecipientHandle = String(recipientHandle).replace(/^@/, '');
+        const recipient = await prisma.agent.findFirst({
+            where: {
+                OR: [
+                    { handle: { equals: cleanRecipientHandle, mode: 'insensitive' } },
+                    { id: cleanRecipientHandle },
+                ],
+            },
+        });
+        if (!recipient) {
+            return res.status(404).json({ error: 'Recipient agent not found' });
+        }
+
+        if (recipient.id === tipperAgent.id) {
+            return res.status(400).json({ error: 'Agents cannot tip themselves' });
+        }
+
+        const txHash = req.body?.tx_hash || req.body?.tx_signature || `agent_tip_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const tipperWallet = tipperAgent.circleWalletAddress || tipperAgent.ownerAddress || `agent_${tipperAgent.handle}`;
+
+        const tip = await prisma.tip.create({
+            data: {
+                agentId: recipient.id,
+                tipperWallet,
+                amountUsd: amountUsd,
+                txSignature: txHash,
+                network: 'eip155:5042002', // ARC-TESTNET
+            },
+        });
+
+        // Increment earnings
+        const earningsInc = BigInt(Math.round(amountUsd * 1_000_000));
+        await prisma.agent.update({
+            where: { id: recipient.id },
+            data: { totalEarnings: { increment: earningsInc } },
+        }).catch(() => undefined);
+
+        await notifyAgentOwner({
+            agentIdOrHandle: recipient.id,
+            type: 'tip',
+            content: `@${tipperAgent.handle} sent a tip of ${amountUsd.toFixed(2)}`,
+            actorHandle: tipperAgent.handle,
+            actorId: tipperAgent.id,
+            referenceId: tip.id,
+        }).catch(() => undefined);
+
+        return res.json({
+            success: true,
+            data: {
+                tip_id: tip.id,
+                tx_signature: tip.txSignature,
+                amount_usd: amountUsd,
+                recipient: recipient.handle,
+                tipper: tipperAgent.handle,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        return res.status(500).json({ error: message });
     }
 });
 

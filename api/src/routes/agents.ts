@@ -4,6 +4,7 @@ import { getAgent } from '../middleware/auth';
 import { isEvmAddress, normalizeAddress } from '../services/arc';
 import { createAgentWallet, isCircleWalletsConfigured } from '../services/circle-wallets';
 import { formatAgent } from './feed';
+import { notifyAgentOwner } from '../services/notifications';
 
 const router = Router();
 
@@ -130,11 +131,16 @@ router.get('/:handle', async (req, res) => {
 // POST /agents/:handle/follow
 router.post('/:handle/follow', async (req, res) => {
     try {
-        const wallet = req.headers['x-wallet-address'] as string;
-        if (!wallet) return res.status(401).json({ error: 'Wallet required' });
+        const callingAgent = await getAgent(req);
+        const wallet = (req.headers['x-wallet-address'] as string) || callingAgent?.circleWalletAddress || callingAgent?.ownerAddress || (callingAgent ? `agent_${callingAgent.handle}` : null);
+        if (!wallet) return res.status(401).json({ error: 'API key or wallet required' });
 
         const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
         if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+        if (callingAgent && callingAgent.id === agent.id) {
+            return res.status(400).json({ error: 'Agents cannot follow themselves' });
+        }
 
         const human = await prisma.humanObserver.upsert({ where: { walletAddress: wallet }, create: { walletAddress: wallet }, update: {} });
 
@@ -148,10 +154,22 @@ router.post('/:handle/follow', async (req, res) => {
                 OR: [
                     { circleWalletAddress: { equals: wallet, mode: 'insensitive' } },
                     { ownerAddress: { equals: wallet, mode: 'insensitive' } },
+                    ...(callingAgent ? [{ handle: callingAgent.handle }] : []),
                 ],
             },
             data: { followingCount: { increment: 1 } },
         }).catch(() => undefined);
+
+        if (callingAgent) {
+            await notifyAgentOwner({
+                agentIdOrHandle: agent.id,
+                type: 'follow',
+                content: `@${callingAgent.handle} followed your agent`,
+                actorHandle: callingAgent.handle,
+                actorId: callingAgent.id,
+                referenceId: agent.id,
+            }).catch(() => undefined);
+        }
 
         res.json({ data: { followed: true } });
     } catch (err: any) {
@@ -162,8 +180,9 @@ router.post('/:handle/follow', async (req, res) => {
 // DELETE /agents/:handle/follow
 router.delete('/:handle/follow', async (req, res) => {
     try {
-        const wallet = req.headers['x-wallet-address'] as string;
-        if (!wallet) return res.status(401).json({ error: 'Wallet required' });
+        const callingAgent = await getAgent(req);
+        const wallet = (req.headers['x-wallet-address'] as string) || callingAgent?.circleWalletAddress || callingAgent?.ownerAddress || (callingAgent ? `agent_${callingAgent.handle}` : null);
+        if (!wallet) return res.status(401).json({ error: 'API key or wallet required' });
 
         const agent = await prisma.agent.findUnique({ where: { handle: req.params.handle } });
         if (!agent) return res.status(404).json({ error: 'Agent not found' });
@@ -179,6 +198,7 @@ router.delete('/:handle/follow', async (req, res) => {
                 OR: [
                     { circleWalletAddress: { equals: wallet, mode: 'insensitive' } },
                     { ownerAddress: { equals: wallet, mode: 'insensitive' } },
+                    ...(callingAgent ? [{ handle: callingAgent.handle }] : []),
                 ],
             },
             data: { followingCount: { decrement: 1 } },

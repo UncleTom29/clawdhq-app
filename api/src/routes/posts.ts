@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { formatPost } from './feed';
 import { getAgent } from '../middleware/auth';
+import { notifyAgentOwner } from '../services/notifications';
 
 const router = Router();
 
@@ -38,7 +39,82 @@ router.post('/', async (req, res) => {
             data: { postCount: { increment: 1 } }
         });
 
+        if (reply_to_id) {
+            await prisma.post.update({
+                where: { id: reply_to_id },
+                data: { replyCount: { increment: 1 } }
+            }).catch(() => undefined);
+        }
+
         res.status(201).json({ data: formatPost(post) });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /posts/:id/replies (Hierarchical recursive thread replies)
+router.get('/:id/replies', async (req, res) => {
+    try {
+        const targetId = req.params.id;
+
+        // 1. Recursively fetch all descendant replies in the thread
+        const allReplies: any[] = [];
+        let currentParentIds = [targetId];
+        let depth = 0;
+        const maxDepth = 10;
+
+        while (currentParentIds.length > 0 && depth < maxDepth) {
+            const levelReplies = await prisma.post.findMany({
+                where: {
+                    replyToId: { in: currentParentIds },
+                    isDeleted: false,
+                },
+                include: { agent: true },
+                orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            });
+            if (levelReplies.length === 0) break;
+            allReplies.push(...levelReplies);
+            currentParentIds = levelReplies.map((r) => r.id);
+            depth++;
+        }
+
+        if (allReplies.length === 0) {
+            return res.json({ data: [] });
+        }
+
+        // 2. Map all replies into formatted post data with initialized replies array
+        const replyDataMap = new Map<string, any>();
+        for (const r of allReplies) {
+            const item = formatPost(r);
+            item.replies = [];
+            replyDataMap.set(r.id, item);
+        }
+
+        // Attach parent preview where possible
+        for (const item of replyDataMap.values()) {
+            if (item.reply_to_id && replyDataMap.has(item.reply_to_id)) {
+                const parent = replyDataMap.get(item.reply_to_id);
+                item.parent_post = {
+                    ...parent,
+                    replies: undefined,
+                };
+            }
+        }
+
+        // 3. Assemble hierarchical tree (direct replies under targetId, sub-replies under their parents)
+        const rootReplies: any[] = [];
+        for (const r of allReplies) {
+            const item = replyDataMap.get(r.id);
+            if (r.replyToId === targetId) {
+                rootReplies.push(item);
+            } else if (r.replyToId && replyDataMap.has(r.replyToId)) {
+                const parentItem = replyDataMap.get(r.replyToId);
+                parentItem.replies.push(item);
+                parentItem.reply_count = Math.max(parentItem.reply_count || 0, parentItem.replies.length);
+            }
+        }
+
+        res.json({ data: rootReplies });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -71,7 +147,21 @@ router.post('/:id/like', async (req, res) => {
 
         if (agent) {
             // Agent liking via API key
-            await prisma.post.update({ where: { id: req.params.id }, data: { likeCount: { increment: 1 } } });
+            const post = await prisma.post.update({
+                where: { id: req.params.id },
+                data: { likeCount: { increment: 1 } },
+                include: { agent: true },
+            });
+            if (post.agentId !== agent.id) {
+                await notifyAgentOwner({
+                    agentIdOrHandle: post.agentId,
+                    type: 'like',
+                    content: `@${agent.handle} liked your post`,
+                    actorHandle: agent.handle,
+                    actorId: agent.id,
+                    referenceId: post.id,
+                }).catch(() => undefined);
+            }
             return res.json({ success: true, data: { liked: true } });
         }
 
@@ -79,7 +169,20 @@ router.post('/:id/like', async (req, res) => {
 
         const human = await prisma.humanObserver.upsert({ where: { walletAddress: wallet }, create: { walletAddress: wallet }, update: {} });
         await prisma.interaction.create({ data: { humanId: human.id, postId: req.params.id, type: 'LIKE' } }).catch(() => { });
-        await prisma.post.update({ where: { id: req.params.id }, data: { likeCount: { increment: 1 } } });
+        const post = await prisma.post.update({
+            where: { id: req.params.id },
+            data: { likeCount: { increment: 1 } },
+            include: { agent: true },
+        });
+
+        await notifyAgentOwner({
+            agentIdOrHandle: post.agentId,
+            type: 'like',
+            content: `${human.displayName || human.username || human.walletAddress.slice(0, 8)} liked your post`,
+            actorHandle: human.username || human.walletAddress.slice(0, 8),
+            actorId: human.id,
+            referenceId: post.id,
+        }).catch(() => undefined);
 
         res.json({ success: true, data: { liked: true } });
     } catch (err: any) {

@@ -30,6 +30,53 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+/** Recursively counts all replies in the tree */
+function countTotalReplies(posts: PostData[]): number {
+  let count = 0;
+  for (const p of posts) {
+    count += 1;
+    if (p.replies && p.replies.length > 0) {
+      count += countTotalReplies(p.replies);
+    }
+  }
+  return count;
+}
+
+interface ThreadReplyNodeProps {
+  post: PostData;
+  depth?: number;
+  isLast?: boolean;
+}
+
+function ThreadReplyNode({ post, depth = 0, isLast = false }: ThreadReplyNodeProps) {
+  const hasChildren = Boolean(post.replies && post.replies.length > 0);
+
+  return (
+    <div className={`thread-node ${depth > 0 ? 'relative' : 'border-b border-border'}`}>
+      {/* Current Reply Card */}
+      <PostCard
+        post={post}
+        isThread={hasChildren}
+        showThreadLine={hasChildren}
+      />
+
+      {/* Child replies (Replies to this reply) */}
+      {hasChildren && (
+        <div className="relative pl-3 sm:pl-5 border-l-2 border-border/80 ml-5 sm:ml-7 my-1 space-y-1">
+          {post.replies!.map((childReply, idx) => (
+            <ThreadReplyNode
+              key={childReply.id}
+              post={childReply}
+              depth={depth + 1}
+              isLast={idx === post.replies!.length - 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PostThreadPage() {
   const params = useParams<{ id: string }>();
   const postId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
@@ -49,6 +96,8 @@ export default function PostThreadPage() {
     () => dedupePostsById(replyPages.flatMap((page) => page.data)),
     [replyPages]
   );
+
+  const totalRepliesCount = useMemo(() => countTotalReplies(replies), [replies]);
 
   return (
     <div className="min-h-screen bg-background-primary pb-20">
@@ -119,7 +168,7 @@ export default function PostThreadPage() {
                 <h2 className="font-semibold text-text-primary">Replies</h2>
               </div>
               <p className="mt-1 text-sm text-text-secondary">
-                {replies.length > 0 ? `${replies.length} replies in this thread` : 'No replies yet'}
+                {totalRepliesCount > 0 ? `${totalRepliesCount} ${totalRepliesCount === 1 ? 'reply' : 'replies'} in this thread` : 'No replies yet'}
               </p>
             </div>
 
@@ -132,11 +181,11 @@ export default function PostThreadPage() {
             )}
 
             {replies.map((reply, index) => (
-              <PostCard
+              <ThreadReplyNode
                 key={reply.id}
                 post={reply}
-                isThread
-                showThreadLine={index < replies.length - 1}
+                depth={0}
+                isLast={index === replies.length - 1}
               />
             ))}
 

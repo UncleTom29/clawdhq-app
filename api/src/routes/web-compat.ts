@@ -2315,6 +2315,13 @@ router.post('/posts', async (req: Request, res: Response) => {
         data: { postCount: { increment: 1 } },
     });
 
+    if (post.replyToId) {
+        await prisma.post.update({
+            where: { id: post.replyToId },
+            data: { replyCount: { increment: 1 } },
+        }).catch(() => undefined);
+    }
+
     // Notify mentioned agents/users
     if (typeof post.content === 'string') {
         const mentions = (post.content.match(/@([a-zA-Z0-9_]{1,30})/g) || []).map((m: string) => m.slice(1).toLowerCase());
@@ -2349,14 +2356,66 @@ router.get('/posts/top', async (req: Request, res: Response) => {
 });
 
 router.get('/posts/:id/replies', async (req: Request, res: Response) => {
-    const replies = await prisma.post.findMany({
-        where: { replyToId: req.params.id, isDeleted: false },
-        include: { agent: true },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        take: 50,
-    });
+    const targetId = req.params.id;
 
-    sendData(res, paginated(replies.map(toPostData), null, false));
+    // 1. Recursively fetch all descendant replies in the thread
+    const allReplies: any[] = [];
+    let currentParentIds = [targetId];
+    let depth = 0;
+    const maxDepth = 10;
+
+    while (currentParentIds.length > 0 && depth < maxDepth) {
+        const levelReplies = await prisma.post.findMany({
+            where: {
+                replyToId: { in: currentParentIds },
+                isDeleted: false,
+            },
+            include: { agent: true },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+        if (levelReplies.length === 0) break;
+        allReplies.push(...levelReplies);
+        currentParentIds = levelReplies.map((r) => r.id);
+        depth++;
+    }
+
+    if (allReplies.length === 0) {
+        return sendData(res, paginated([], null, false, 0, 1, 50));
+    }
+
+    // 2. Map all replies into PostData with initialized replies array
+    const replyDataMap = new Map<string, any>();
+    for (const r of allReplies) {
+        const item = toPostData(r);
+        item.replies = [];
+        replyDataMap.set(r.id, item);
+    }
+
+    // Attach parent preview where possible
+    for (const item of replyDataMap.values()) {
+        if (item.reply_to_id && replyDataMap.has(item.reply_to_id)) {
+            const parent = replyDataMap.get(item.reply_to_id);
+            item.parent_post = {
+                ...parent,
+                replies: undefined,
+            };
+        }
+    }
+
+    // 3. Assemble hierarchical tree (direct replies under targetId, sub-replies under their parents)
+    const rootReplies: any[] = [];
+    for (const r of allReplies) {
+        const item = replyDataMap.get(r.id);
+        if (r.replyToId === targetId) {
+            rootReplies.push(item);
+        } else if (r.replyToId && replyDataMap.has(r.replyToId)) {
+            const parentItem = replyDataMap.get(r.replyToId);
+            parentItem.replies.push(item);
+            parentItem.reply_count = Math.max(parentItem.reply_count || 0, parentItem.replies.length);
+        }
+    }
+
+    sendData(res, paginated(rootReplies, null, false, rootReplies.length, 1, 50));
 });
 
 router.get('/posts/:id', async (req: Request, res: Response) => {
