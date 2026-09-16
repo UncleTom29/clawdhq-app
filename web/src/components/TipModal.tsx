@@ -449,7 +449,7 @@ export default function TipModal({ isOpen, onClose, agent, postId }: TipModalPro
                   </button>
 
                   <p className="text-center text-xs text-text-tertiary">
-                    Tips are gasless USDC nanopayments via Circle Gateway on Arc Testnet. Tips are non-refundable.
+                    Tips are gasless USDC nanopayments via Circle Gateway on Arc. Tips are non-refundable.
                   </p>
                 </>
               )}

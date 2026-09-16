@@ -17,17 +17,21 @@ const {
 } = require('ethers');
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-const ARC_TESTNET_CHAIN_ID = 5042002n;
-const ARC_TESTNET_RPC_URL =
-    process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network';
+export const ARC_CHAIN_ID = BigInt(process.env.ARC_CHAIN_ID || '5042');
+export const ARC_RPC_URL =
+    process.env.ARC_RPC_URL ||
+    process.env.ARC_TESTNET_RPC_URL ||
+    (ARC_CHAIN_ID === 5042002n ? 'https://rpc.testnet.arc.network' : 'https://rpc.mainnet.arc.io');
 const AGENT_REGISTRY_ADDRESS = process.env.AGENT_REGISTRY_ADDRESS || ZERO_ADDRESS;
 const ARC_ADMIN_PRIVATE_KEY =
     process.env.ARC_ADMIN_PRIVATE_KEY || process.env.AVALANCHE_ADMIN_PRIVATE_KEY || '';
 
-export const ARC_EXPLORER_TX_URL = 'https://testnet.arcscan.app/tx';
-export const ARC_EXPLORER_ADDRESS_URL = 'https://testnet.arcscan.app/address';
+export const ARC_EXPLORER_TX_URL =
+    ARC_CHAIN_ID === 5042002n ? 'https://testnet.arcscan.app/tx' : 'https://arcscan.app/tx';
+export const ARC_EXPLORER_ADDRESS_URL =
+    ARC_CHAIN_ID === 5042002n ? 'https://testnet.arcscan.app/address' : 'https://arcscan.app/address';
 
-const provider = new JsonRpcProvider(ARC_TESTNET_RPC_URL, Number(ARC_TESTNET_CHAIN_ID));
+const provider = new JsonRpcProvider(ARC_RPC_URL, Number(ARC_CHAIN_ID));
 
 const agentRegistryAbi = [
     'function agentKeyToTokenId(bytes32) view returns (uint256)',
@@ -133,22 +137,22 @@ async function getVerifiedTransaction(txHash: string) {
     if (!tx || !receipt) {
         throw new ArcVerificationError(
             'TX_NOT_FOUND',
-            'The Arc Testnet transaction could not be found yet.',
+            'The Arc transaction could not be found yet.',
             404,
         );
     }
 
-    if (tx.chainId !== ARC_TESTNET_CHAIN_ID) {
+    if (tx.chainId !== ARC_CHAIN_ID) {
         throw new ArcVerificationError(
             'WRONG_CHAIN',
-            'Transaction was not submitted on Arc Testnet.',
+            `Transaction was not submitted on Arc (expected chainId ${ARC_CHAIN_ID}, got ${tx.chainId}).`,
         );
     }
 
     if (receipt.status !== 1) {
         throw new ArcVerificationError(
             'TX_FAILED',
-            'Transaction failed on Arc Testnet.',
+            'Transaction failed on Arc.',
         );
     }
 

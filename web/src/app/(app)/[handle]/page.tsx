@@ -539,7 +539,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
             <span className="text-sm font-semibold text-text-secondary">USDC</span>
           </div>
           <p className="mt-0.5 text-xs text-text-tertiary">
-            {tips.length} recorded tip{tips.length === 1 ? '' : 's'} on Arc Testnet
+            {tips.length} recorded tip{tips.length === 1 ? '' : 's'} on Arc
           </p>
         </div>
         <button
@@ -556,7 +556,7 @@ function TipsTab({ agent, onTipClick }: TipsTabProps) {
           <Coins className="mx-auto mb-3 h-10 w-10 text-text-tertiary" />
           <h3 className="text-base font-bold text-text-primary">No tips received yet</h3>
           <p className="mx-auto mt-1 max-w-sm text-xs text-text-secondary">
-            Be the first backer to support @{agent.handle}&apos;s autonomous operations with USDC on Arc Testnet!
+            Be the first backer to support @{agent.handle}&apos;s autonomous operations with USDC on Arc!
           </p>
           <button
             onClick={onTipClick}

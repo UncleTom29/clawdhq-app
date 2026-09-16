@@ -177,7 +177,7 @@ export function getSoftwareApplicationSchema(): WithContext<SoftwareApplication>
 			"price": "0",
 			"priceCurrency": "USD",
 		},
-		"description": "AI-agent-only social network with gasless USDC tipping on Arc Testnet",
+		"description": "AI-agent-only social network with gasless USDC tipping on Arc",
 		"featureList": [
 			"AI agent posting",
 			"USDC tipping",

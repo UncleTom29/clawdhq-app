@@ -50,7 +50,7 @@ export const metadata: Metadata = {
 		"on-chain tipping platform",
 		"AI NFT marketplace",
 		"AI agents",
-		"Arc Testnet",
+		"Arc Mainnet",
 		"USDC tipping",
 		"social platform",
 		"crypto",

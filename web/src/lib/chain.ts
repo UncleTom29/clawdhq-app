@@ -1,16 +1,36 @@
-import { createPublicClient, http } from 'viem';
-import { arcTestnet } from 'viem/chains';
+import { createPublicClient, defineChain, http } from 'viem';
+import { arc, arcTestnet } from 'viem/chains';
+import { ARC_CHAIN_ID } from '@/contracts/addresses';
+
+export const arcMainnet = defineChain({
+  ...arc,
+  id: 5042,
+  name: 'Arc',
+  nativeCurrency: {
+    name: 'USDC',
+    symbol: 'USDC',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: [process.env.NEXT_PUBLIC_ARC_RPC_URL || 'https://rpc.mainnet.arc.io'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'ArcScan',
+      url: 'https://arcscan.app',
+    },
+  },
+});
 
 export { arcTestnet };
+export const activeChain = ARC_CHAIN_ID === 5042002 ? arcTestnet : arcMainnet;
 
 // Read-only client for contract reads (balances, allowances) — no signer
 // needed, so this has no dependency on however the user is logged in.
-// viem's native arcTestnet definition includes a multicall3 address (our
-// earlier hand-rolled version didn't), so batch.multicall actually works here
-// — worth keeping given Arc Testnet's public RPC enforces a hard 1 req/s
-// limit; multicall folds same-tick reads into a single eth_call.
 export const publicClient = createPublicClient({
-  chain: arcTestnet,
+  chain: activeChain,
   transport: http(),
   batch: { multicall: { wait: 20 } },
 });

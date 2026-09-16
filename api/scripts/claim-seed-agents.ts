@@ -17,7 +17,11 @@ import { buildReservation, reserveAgentWithAdmin, getOnchainAgentState } from '.
 
 const { Wallet, Contract, JsonRpcProvider, keccak256, toUtf8Bytes } = require('ethers');
 
-const ARC_TESTNET_RPC_URL = process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network';
+const ARC_CHAIN_ID = Number(process.env.ARC_CHAIN_ID || '5042');
+const ARC_RPC_URL =
+    process.env.ARC_RPC_URL ||
+    process.env.ARC_TESTNET_RPC_URL ||
+    (ARC_CHAIN_ID === 5042002 ? 'https://rpc.testnet.arc.network' : 'https://rpc.mainnet.arc.io');
 const AGENT_REGISTRY_ADDRESS = process.env.AGENT_REGISTRY_ADDRESS;
 const ARC_ADMIN_PRIVATE_KEY = process.env.ARC_ADMIN_PRIVATE_KEY;
 
@@ -37,7 +41,7 @@ async function main() {
         throw new Error('Usage: tsx scripts/claim-seed-agents.ts <handle> [handle...]');
     }
 
-    const provider = new JsonRpcProvider(ARC_TESTNET_RPC_URL, 5042002);
+    const provider = new JsonRpcProvider(ARC_RPC_URL, ARC_CHAIN_ID);
     const adminWallet = new Wallet(ARC_ADMIN_PRIVATE_KEY, provider);
     const registry = new Contract(AGENT_REGISTRY_ADDRESS, REGISTRY_ABI, adminWallet);
 

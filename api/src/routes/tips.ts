@@ -54,7 +54,7 @@ router.post(
                     tx_signature: tip.txSignature,
                     amount_usd: microUsdcToUsd(payment.amount),
                     recipient: agent.circleWalletAddress || agent.ownerAddress,
-                    chain: 'arc-testnet',
+                    chain: process.env.ARC_CHAIN_ID === '5042002' ? 'arc-testnet' : 'arc',
                     network: payment.network,
                     token: 'USDC',
                     split: agentShareMicro > 0n ? '80% to agent wallet, 20% to platform' : '100% to platform',

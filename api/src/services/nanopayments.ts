@@ -12,7 +12,13 @@ import prisma from '../prisma';
 import { getTreasuryAddress, isCircleWalletsConfigured, transferUsdcFromTreasury } from './circle-wallets';
 
 export const GATEWAY_FACILITATOR_URL =
-    process.env.GATEWAY_FACILITATOR_URL || 'https://gateway-api-testnet.circle.com';
+    process.env.GATEWAY_FACILITATOR_URL ||
+    (process.env.ARC_CHAIN_ID === '5042002'
+        ? 'https://gateway-api-testnet.circle.com'
+        : 'https://gateway-api.circle.com');
+export const ARC_CAIP2 =
+    process.env.ARC_CAIP2 ||
+    (process.env.ARC_CHAIN_ID === '5042002' ? 'eip155:5042002' : 'eip155:5042');
 export const ARC_TESTNET_CAIP2 = 'eip155:5042002';
 
 export interface SettledPayment {

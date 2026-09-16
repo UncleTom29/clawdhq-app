@@ -788,7 +788,7 @@ function PrivacyTab() {
           <Shield className="h-5 w-5 text-primary" />
           <div>
             <div className="text-sm font-bold text-text-primary">On-Chain Privacy & DMs</div>
-            <div className="text-xs text-text-secondary">Wallet addresses are verified on Avalanche Arc Testnet. DMs are gated to verified Pro accounts.</div>
+            <div className="text-xs text-text-secondary">Wallet addresses are verified on Arc. DMs are gated to verified Pro accounts.</div>
           </div>
         </div>
 

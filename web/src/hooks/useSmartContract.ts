@@ -16,7 +16,7 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { parseUnits, formatUnits, type Abi } from 'viem';
-import { publicClient, arcTestnet } from '@/lib/chain';
+import { publicClient, activeChain } from '@/lib/chain';
 import { usePrivyWalletClient } from './use-privy-wallet-client';
 import { USDC_ABI, GATEWAY_WALLET_ABI, AGENT_REGISTRY_ABI } from '@/contracts/abis';
 import {
@@ -111,7 +111,7 @@ async function writeAndWait(
     functionName: params.functionName,
     args: params.args,
     account: walletClient.account,
-    chain: arcTestnet,
+    chain: activeChain,
   } as Parameters<typeof walletClient.writeContract>[0]);
 
   await publicClient.waitForTransactionReceipt({ hash });

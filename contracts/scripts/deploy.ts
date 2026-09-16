@@ -3,13 +3,22 @@ import * as fs from "fs";
 import * as path from "path";
 
 async function main() {
-  console.log("Starting deployment to Arc Testnet...\n");
+  const network = await ethers.provider.getNetwork();
+  const chainId = Number(network.chainId);
+  const isMainnet = chainId === 5042;
+  const networkName = isMainnet ? "arc" : "arcTestnet";
+
+  console.log(`Starting deployment to ${isMainnet ? "Arc Mainnet" : "Arc Testnet"} (chainId: ${chainId})...\n`);
 
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with account:", deployer.address);
 
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log("Account balance:", ethers.formatEther(balance), "USDC (native gas)\n");
+
+  if (balance === 0n) {
+    throw new Error(`Deployer ${deployer.address} has 0 USDC native gas on chain ${chainId}. Please fund this wallet before deploying.`);
+  }
 
   const AgentRegistry = await ethers.getContractFactory("AgentRegistry");
   const agentRegistry = await AgentRegistry.deploy();
@@ -18,8 +27,8 @@ async function main() {
   console.log("AgentRegistry:", agentRegistryAddress);
 
   const deploymentInfo = {
-    network: "arcTestnet",
-    chainId: 5042002,
+    network: networkName,
+    chainId,
     deployer: deployer.address,
     timestamp: new Date().toISOString(),
     contracts: {
@@ -32,9 +41,10 @@ async function main() {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
 
+  const filePrefix = isMainnet ? "arc-mainnet" : "arc-testnet";
   const deploymentFile = path.join(
     deploymentsDir,
-    `arc-testnet-${Date.now()}.json`
+    `${filePrefix}-${Date.now()}.json`
   );
   fs.writeFileSync(deploymentFile, JSON.stringify(deploymentInfo, null, 2));
 

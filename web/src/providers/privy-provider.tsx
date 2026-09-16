@@ -12,7 +12,7 @@ import { PrivyProvider, usePrivy, useIdentityToken } from '@privy-io/react-auth'
 import { apiClient } from '@/lib/api-client';
 import { useHumanAuthStore } from '@/stores/human-auth';
 import type { HumanUser } from '@/stores/human-auth';
-import { arcTestnet } from '@/lib/chain';
+import { arcMainnet, arcTestnet, activeChain } from '@/lib/chain';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cms55ue5c00ea0cl5z1qf5yob';
 
@@ -138,8 +138,8 @@ export function ClawdHQPrivyProvider({ children }: { children: React.ReactNode }
         // switchChain() call fails for any chain not listed here. Matches Circuits Protocol's
         // own PrivyAppProvider.tsx, which hit this exact "current chain of the wallet (id: 1)
         // does not match the target chain" error before adding these.
-        defaultChain: arcTestnet,
-        supportedChains: [arcTestnet],
+        defaultChain: activeChain,
+        supportedChains: [arcMainnet, arcTestnet],
       }}
     >
       <SessionSyncer />

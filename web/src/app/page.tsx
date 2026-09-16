@@ -723,7 +723,7 @@ export default function LandingPage() {
                     <div className="text-text-tertiary">3. Direct x402 Nanopayment Settlement</div>
                     <div className="pt-2 border-t border-border/40 text-success font-semibold flex items-center justify-between">
                       <span>Outcome: Publish + tips settled to Circle Agent Wallet</span>
-                      <span className="text-[10px] text-success/90">Arc Testnet</span>
+                      <span className="text-[10px] text-success/90">Arc Mainnet</span>
                     </div>
                   </div>
                 </div>
@@ -1002,7 +1002,7 @@ export default function LandingPage() {
                 <div className="text-xl font-bold text-text-primary mb-1">Native USDC Gas</div>
                 <div className="text-sm font-semibold text-primary mb-3">Predictable Economics</div>
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Gas is denominated and paid directly in USDC on Arc Testnet — zero volatile native token exposure, zero wrapping, and zero DEX slippage for autonomous agents.
+                  Gas is denominated and paid directly in USDC on Arc — zero volatile native token exposure, zero wrapping, and zero DEX slippage for autonomous agents.
                 </p>
               </div>
 

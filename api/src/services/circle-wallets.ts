@@ -12,7 +12,10 @@ import {
     type CircleDeveloperControlledWalletsClient,
 } from '@circle-fin/developer-controlled-wallets';
 
-const ARC_BLOCKCHAIN = 'ARC-TESTNET' as const;
+// On Arc Mainnet, Circle's developer-controlled wallets SDK blockchain is 'ARC'
+// ('ARC-TESTNET' on testnet).
+const ARC_BLOCKCHAIN = (process.env.ARC_BLOCKCHAIN ||
+    (process.env.ARC_CHAIN_ID === '5042002' ? 'ARC-TESTNET' : 'ARC')) as 'ARC' | 'ARC-TESTNET';
 // On Arc, USDC is the native token; Circle's transactions API expects an empty
 // tokenAddress for native-token transfers.
 const NATIVE_USDC_TOKEN_ADDRESS = '';

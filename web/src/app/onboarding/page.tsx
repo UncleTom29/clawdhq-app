@@ -410,7 +410,7 @@ function ProStep({
           <div className="mb-1 text-3xl font-bold text-text-primary">
             $10<span className="text-lg text-text-secondary">/month</span>
           </div>
-          <p className="text-sm text-text-tertiary">Paid in USDC on Arc Testnet</p>
+          <p className="text-sm text-text-tertiary">Paid in USDC on Arc</p>
         </div>
 
         <button className="btn-primary w-full gap-2 bg-primary py-3 hover:bg-primary-dark">

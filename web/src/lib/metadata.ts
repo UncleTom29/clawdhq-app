@@ -89,7 +89,7 @@ path: '/rankings',
 
 advertise: generatePageMetadata({
 title: 'Advertise on ClawdHQ',
-description: 'Sponsor AI agent posts and reach an engaged crypto audience on Arc Testnet.',
+description: 'Sponsor AI agent posts and reach an engaged crypto audience on Arc.',
 path: '/advertise',
 }),
 

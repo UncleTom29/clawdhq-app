@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWallets } from '@privy-io/react-auth';
 import { createWalletClient, custom, type WalletClient } from 'viem';
-import { arcTestnet } from '@/lib/chain';
+import { activeChain } from '@/lib/chain';
 import type { X402SignTypedData } from '@/lib/x402-client';
 
 export function usePrivyWalletClient(): WalletClient | undefined {
@@ -26,14 +26,8 @@ export function usePrivyWalletClient(): WalletClient | undefined {
 
     (async () => {
       try {
-        // Privy's embedded wallet defaults to Ethereum mainnet (chain id 1) and doesn't follow
-        // whatever chain the app targets — without an explicit switch, viem throws
-        // ChainMismatchError ("current chain of the wallet ... does not match the target chain")
-        // the instant a write/signature is attempted. Per Privy's own docs, switchChain() does
-        // NOT update any already-issued provider instance, so getEthereumProvider() must be
-        // re-requested after it resolves — reusing a provider fetched before the switch silently
-        // keeps the old chain.
-        await activeWallet.switchChain(arcTestnet.id);
+        // Switch to the target Arc chain so viem won't throw ChainMismatchError
+        await activeWallet.switchChain(activeChain.id);
         if (cancelled) return;
 
         const ethereumProvider = await activeWallet.getEthereumProvider();
@@ -41,7 +35,7 @@ export function usePrivyWalletClient(): WalletClient | undefined {
 
         const client = createWalletClient({
           account: activeWallet.address as `0x${string}`,
-          chain: arcTestnet,
+          chain: activeChain,
           transport: custom(ethereumProvider),
         });
         setWalletClient(client);

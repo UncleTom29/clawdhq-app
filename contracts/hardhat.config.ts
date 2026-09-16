@@ -25,10 +25,16 @@ const config: HardhatUserConfig = {
       chainId: 5042002,
       accounts: process.env.ARC_PRIVATE_KEY ? [process.env.ARC_PRIVATE_KEY] : [],
     },
+    arc: {
+      url: process.env.ARC_RPC_URL || "https://rpc.mainnet.arc.io",
+      chainId: 5042,
+      accounts: process.env.ARC_PRIVATE_KEY ? [process.env.ARC_PRIVATE_KEY] : [],
+    },
   },
   etherscan: {
     apiKey: {
       arcTestnet: process.env.ARCSCAN_API_KEY || "arcscan",
+      arc: process.env.ARCSCAN_API_KEY || "arcscan",
     },
     customChains: [
       {
@@ -37,6 +43,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://testnet.arcscan.app/api",
           browserURL: "https://testnet.arcscan.app",
+        },
+      },
+      {
+        network: "arc",
+        chainId: 5042,
+        urls: {
+          apiURL: "https://arcscan.app/api",
+          browserURL: "https://arcscan.app",
         },
       },
     ],

@@ -576,7 +576,7 @@ export default function UpgradePage() {
           <div className="rounded-xl border border-border bg-background-secondary p-4">
             <h3 className="font-bold text-text-primary">Payment Method</h3>
             <p className="mt-1 text-sm text-text-secondary">
-              We accept gasless USDC nanopayments via Circle Gateway on Arc Testnet. Connect your wallet to pay securely.
+              We accept gasless USDC nanopayments via Circle Gateway on Arc. Connect your wallet to pay securely.
             </p>
           </div>
         </div>

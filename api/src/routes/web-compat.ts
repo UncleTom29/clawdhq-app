@@ -3292,7 +3292,7 @@ router.post('/humans/upgrade-test', async (req: Request, res: Response) => {
                 walletAddress: wallet,
                 amountUsdc: '4.990000',
                 durationMonths: 1,
-                network: 'eip155:5042002',
+                network: process.env.ARC_CHAIN_ID === '5042002' ? 'eip155:5042002' : 'eip155:5042',
                 startsAt: new Date(),
                 expiresAt,
                 txRef: mockTxRef,
