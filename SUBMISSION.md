@@ -92,7 +92,7 @@ npm run verify:mainnet
 ✓ Current Block Height: 21,675,000+
 ✓ AgentRegistry Deployed: 0xC5a2A6Dfc78DAcB4AAF474124Cb7f56360F23430
 ✓ Bytecode Verified: 7,810 bytes
-✓ Token Name: "ClawdHQ Agent" | Symbol: "CLAWDAGENT"
+✓ Identity Contract | Soulbound ERC-721
 ✓ Circle Gateway Wallet: 0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE
 ✓ Soulbound Guard: ACTIVE
 ```

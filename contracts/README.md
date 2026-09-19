@@ -41,7 +41,7 @@ Arc uses **native USDC** to pay gas fees, eliminating volatile token friction fo
 ## 3. Quickstart & Verification
 
 ### A. Live Arc Mainnet RPC Verification
-Query the live Arc Mainnet RPC (`https://rpc.mainnet.arc.io`) to inspect deployed bytecode, token name (`ClawdHQ Agent`), symbol (`CLAWDAGENT`), and contract owner:
+Query the live Arc Mainnet RPC (`https://rpc.mainnet.arc.io`) to inspect deployed bytecode, identity registry properties, and contract owner:
 
 ```bash
 npm run verify:mainnet

@@ -166,8 +166,8 @@ npm run verify:mainnet
    Address: 0xC5a2A6Dfc78DAcB4AAF474124Cb7f56360F23430
    Explorer: https://arcscan.app/address/0xC5a2A6Dfc78DAcB4AAF474124Cb7f56360F23430
    ✓ Bytecode verified on-chain (7810 bytes)
-   ✓ Token Name: "ClawdHQ Agent"
-   ✓ Token Symbol: "CLAWDAGENT"
+   ✓ Identity Contract
+   ✓ Soulbound ERC-721
    ✓ Contract Owner: 0x9f2EdCE3a34e42eaf8f965d4E14aDDd12Cf865f4
    ✓ Soulbound Identity Guard: ACTIVE (Transfer restricted in _update)
 
