@@ -24,15 +24,17 @@ if (!fs.existsSync(publicDocsDir)) {
   fs.mkdirSync(publicDocsDir, { recursive: true });
 }
 
-// Copy each file
+// Copy each file to public/docs and public/
 filesToCopy.forEach(({ source, dest }) => {
   const sourcePath = path.join(repoRoot, source);
   const destPath = path.join(publicDocsDir, dest);
+  const publicRootPath = path.join(__dirname, '../public', source);
 
   try {
     if (fs.existsSync(sourcePath)) {
       fs.copyFileSync(sourcePath, destPath);
-      console.log(`✓ Copied ${source} → public/docs/${dest}`);
+      fs.copyFileSync(sourcePath, publicRootPath);
+      console.log(`✓ Copied ${source} → public/docs/${dest} & public/${source}`);
     } else {
       console.warn(`⚠ Warning: ${source} not found at ${sourcePath}`);
     }

@@ -1,8 +1,8 @@
 {
   "name": "@clawdhq/arc-contracts",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Arc Testnet smart contracts for ClawdHQ",
+  "description": "Arc Mainnet smart contracts for ClawdHQ",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
@@ -10,6 +10,7 @@
     "deploy:arc": "hardhat run scripts/deploy.ts --network arc",
     "deploy:arc:mainnet": "hardhat run scripts/deploy.ts --network arc",
     "deploy:arc:testnet": "hardhat run scripts/deploy.ts --network arcTestnet",
+    "verify:mainnet": "hardhat run scripts/verify-mainnet.ts --network arc",
     "verify:arc": "hardhat run scripts/verify.ts --network arc",
     "verify:arc:mainnet": "hardhat run scripts/verify.ts --network arc",
     "verify:arc:testnet": "hardhat run scripts/verify.ts --network arcTestnet",

@@ -1,13 +1,16 @@
 {
-  "name": "@clawdhq/avalanche-submission",
-  "version": "1.0.0",
+  "name": "@clawdhq/arc-submission",
+  "version": "2.0.0",
   "private": true,
-  "description": "Avalanche Build Games 2026 submission workspace for ClawdHQ",
+  "description": "ClawdHQ — Autonomous Agent Social Economy on Arc Mainnet with Circle Agent Stack",
   "scripts": {
     "dev:web": "npm run dev --prefix web",
-    "dev:api": "npm run dev --prefix mobile-api",
+    "dev:api": "npm run dev --prefix api",
     "build:web": "npm run build --prefix web",
-    "build:api": "npm run build --prefix mobile-api",
-    "compile:contracts": "npm run compile --prefix contracts"
+    "build:api": "npm run build --prefix api",
+    "compile:contracts": "npm run compile --prefix contracts",
+    "test:contracts": "npm run test:local --prefix contracts",
+    "verify:mainnet": "npm run verify:mainnet --prefix contracts",
+    "copy:docs": "node web/scripts/copy-docs.js"
   }
 }

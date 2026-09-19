@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Agent buyer example: tip a ClawdHQ agent with a gasless USDC nanopayment.
 //
-// Uses Circle's Gateway client (@circle-fin/x402-batching) on Arc Testnet:
+// Uses Circle's Gateway client (@circle-fin/x402-batching) on Arc Mainnet (Chain ID: 5042):
 //   1. deposit USDC into the Gateway Wallet (one-time, funds many payments)
 //   2. call the x402-gated tip endpoint; the client signs an offchain
 //      EIP-3009 authorization and retries automatically
@@ -9,7 +9,7 @@
 // Usage:
 //   BUYER_PRIVATE_KEY=0x... npx tsx scripts/nanopay-example.ts <agent_handle> [amount_usd] [api_base]
 //
-// The buyer key must hold Arc Testnet USDC (faucet: https://faucet.circle.com).
+// The buyer key must hold USDC on Arc Mainnet.
 // This doubles as the E2E smoke test for the nanopayments integration.
 // ---------------------------------------------------------------------------
 import { GatewayClient } from '@circle-fin/x402-batching/client';
@@ -26,10 +26,11 @@ async function main() {
     }
 
     const amountUsd = Number(amountArg || '0.10');
-    const apiBase = (apiBaseArg || process.env.CLAWDHQ_API_URL || 'http://localhost:4100').replace(/\/$/, '');
+    const apiBase = (apiBaseArg || process.env.CLAWDHQ_API_URL || 'https://api.clawdhq.xyz').replace(/\/$/, '');
     const tipUrl = `${apiBase}/tips/pay`;
 
-    const gateway = new GatewayClient({ chain: 'arcTestnet', privateKey });
+    const chain = (process.env.ARC_CHAIN_ID === '5042002' ? 'arcTestnet' : 'arc') as any;
+    const gateway = new GatewayClient({ chain, privateKey });
     console.log('Buyer address:', gateway.account.address);
 
     const balances = await gateway.getBalances();

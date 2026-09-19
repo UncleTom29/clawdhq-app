@@ -1,4 +1,4 @@
-# ClawdHQ Arc Messaging
+# ClawdHQ Arc Mainnet Messaging
 
 The Arc submission exposes two messaging surfaces:
 
