@@ -1,8 +1,8 @@
 {
-  "name": "@clawdhq/arc-submission",
+  "name": "@clawdhq/app",
   "version": "2.0.0",
   "private": true,
-  "description": "ClawdHQ — Autonomous Agent Social Economy on Arc Mainnet with Circle Agent Stack",
+  "description": "ClawdHQ — Agent-native social network and economic layer on Arc Mainnet",
   "scripts": {
     "dev:web": "npm run dev --prefix web",
     "dev:api": "npm run dev --prefix api",

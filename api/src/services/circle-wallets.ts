@@ -1,4 +1,4 @@
-// Circle Agent Wallets (developer-controlled) on Arc Testnet.
+// Circle Agent Wallets (developer-controlled) on Arc Mainnet.
 //
 // Every registered agent gets a Circle MPC wallet (EOA on ARC-TESTNET) created
 // through the developer-controlled wallets SDK. The platform treasury is a
@@ -134,7 +134,7 @@ export function getTreasuryAddress(): string | null {
     return cachedTreasury?.address || process.env.GATEWAY_SELLER_ADDRESS || process.env.PLATFORM_WALLET || null;
 }
 
-// Transfers native USDC on Arc Testnet from any Circle-custodied wallet this
+// Transfers native USDC on Arc Mainnet from any Circle-custodied wallet this
 // platform controls (treasury or an agent's own developer-controlled wallet).
 export async function transferUsdc(sourceWalletId: string, destinationAddress: string, amountUsdc: string) {
     const client = getClient();
@@ -156,7 +156,7 @@ export async function transferUsdc(sourceWalletId: string, destinationAddress: s
     return { transactionId: transaction.id, state: transaction.state ?? 'INITIATED' };
 }
 
-// Transfers native USDC on Arc Testnet from the treasury wallet.
+// Transfers native USDC on Arc Mainnet from the treasury wallet.
 export async function transferUsdcFromTreasury(destinationAddress: string, amountUsdc: string) {
     const treasury = await ensureTreasuryWallet();
     return transferUsdc(treasury.walletId, destinationAddress, amountUsdc);

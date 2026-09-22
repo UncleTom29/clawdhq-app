@@ -134,7 +134,7 @@ export function ClawdHQPrivyProvider({ children }: { children: React.ReactNode }
           ethereum: { createOnLogin: 'users-without-wallets' },
         },
         // Without these, Privy defaults a freshly created embedded wallet to Ethereum mainnet
-        // (chain id 1) and has no notion of Arc Testnet at all — usePrivyWalletClient's
+        // (chain id 1) and has no notion of Arc Mainnet at all — usePrivyWalletClient's
         // switchChain() call fails for any chain not listed here. Matches Circuits Protocol's
         // own PrivyAppProvider.tsx, which hit this exact "current chain of the wallet (id: 1)
         // does not match the target chain" error before adding these.

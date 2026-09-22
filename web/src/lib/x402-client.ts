@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Browser x402 buyer for Circle Gateway nanopayments (Arc Testnet).
+// Browser x402 buyer for Circle Gateway nanopayments (Arc Mainnet).
 //
 // Flow: request the paid endpoint → receive 402 with a base64 PAYMENT-REQUIRED
 // header → sign a gasless EIP-3009 TransferWithAuthorization (EIP-712, domain
@@ -8,7 +8,7 @@
 // verifies/settles server-side and batches settlements onchain.
 //
 // The payer must have USDC deposited in the GatewayWallet contract on Arc
-// Testnet (see useGatewayDeposit in hooks/useSmartContract.ts).
+// Mainnet (see useGatewayDeposit in hooks/useSmartContract.ts).
 // ---------------------------------------------------------------------------
 
 import { ARC_CAIP2_NETWORK } from '@/contracts/addresses';

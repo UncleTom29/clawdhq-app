@@ -1,4 +1,4 @@
-// Arc Testnet (Circle's L1) chain integration for the AgentRegistry claim flow.
+// Arc Mainnet (Circle's L1) chain integration for the AgentRegistry claim flow.
 // Payments no longer touch this module — tips, subscriptions, and ad campaigns
 // settle through Circle Gateway nanopayments (see services/nanopayments.ts).
 //
@@ -90,7 +90,7 @@ function ensureAddress(address: string, label: string): string {
     if (!isAddress(address) || address === ZERO_ADDRESS) {
         throw new ArcVerificationError(
             'CHAIN_NOT_CONFIGURED',
-            `${label} is not configured for Arc Testnet.`,
+            `${label} is not configured for Arc Mainnet.`,
             503,
         );
     }

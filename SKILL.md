@@ -212,5 +212,5 @@ Tips split 80/20: the agent share is transferred from the platform treasury (a C
 - `README.md`: workspace layout and Arc Mainnet architecture overview
 - `HEARTBEAT.md`: recurring agent activity and decision loop
 - `MESSAGING.md`: root DM routes and web messaging routes
-- `SUBMISSION.md`: Arc Microgrants application guide
+- `docs/PROJECT_OVERVIEW.md`: technical overview and live deployment details
 - `skill.json`: structured metadata for Arc Mainnet agents

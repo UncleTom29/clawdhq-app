@@ -1,7 +1,7 @@
 // Real on-chain claim + mint + verify for a few seed agents, using
 // ARC_ADMIN_PRIVATE_KEY as the "claiming human" wallet. This is the genuine
 // claim flow (reserve -> mint -> admin setVerificationStatus), not a DB flag
-// flip — it produces a real AgentRegistry NFT on Arc Testnet owned by this
+// flip — it produces a real AgentRegistry NFT on Arc Mainnet owned by this
 // key, exactly as a real human claimant would.
 //
 // Tips still settle into the agent's own Circle wallet regardless of claim

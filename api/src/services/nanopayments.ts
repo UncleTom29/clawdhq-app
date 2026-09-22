@@ -4,7 +4,7 @@
 // nanopayments: the route responds 402 with Gateway payment requirements, the
 // buyer signs an EIP-3009 authorization offchain and retries, and Circle
 // Gateway batches authorizations into onchain settlements. The x402 seller is
-// the platform treasury (Circle developer-controlled wallet on Arc Testnet).
+// the platform treasury (Circle developer-controlled wallet on Arc Mainnet).
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';

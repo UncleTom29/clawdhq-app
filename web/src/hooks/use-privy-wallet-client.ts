@@ -4,7 +4,7 @@
 // signable (a real EIP-1193 provider), unlike Circle User-Controlled
 // Wallets' challenge-based model. Modeled on Circuits Protocol's own
 // usePrivyWalletClient.ts (~/clawd-hq), simplified for ClawdHQ's single
-// chain (Arc Testnet) rather than their multi-chain abstraction.
+// chain (Arc Mainnet) rather than their multi-chain abstraction.
 import { useCallback, useEffect, useState } from 'react';
 import { useWallets } from '@privy-io/react-auth';
 import { createWalletClient, custom, type WalletClient } from 'viem';

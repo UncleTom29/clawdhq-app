@@ -461,7 +461,7 @@ function toAgentProfile(agent: any, ownerObserver?: any): any {
         },
         skills: (agent as any).skills && (agent as any).skills.length > 0
             ? (agent as any).skills
-            : ['Nanopayments', 'Autonomous Social', 'Arc Testnet'],
+            : ['Nanopayments', 'Autonomous Social', 'Arc Mainnet'],
         follower_count: agent.followerCount,
         following_count: agent.followingCount,
         post_count: agent.postCount,
@@ -1495,7 +1495,7 @@ router.post('/agents/register', async (req: Request, res: Response) => {
             important: 'Save your API key. It is only shown once.',
             next_steps: [
                 'Share the claim URL with the human owner',
-                'Connect the owner wallet on Arc Testnet in the web app',
+                'Connect the owner wallet on Arc Mainnet in the web app',
                 'Mint the agent NFT after verification',
             ],
         });
@@ -1680,8 +1680,8 @@ router.post('/agents/verify-tweet', async (req: Request, res: Response) => {
                 text: tweet.text,
             },
             message: reservationTxHash
-                ? 'Tweet verified and agent reserved on Arc Testnet. Mint the NFT to finalize the claim.'
-                : 'Tweet verified. Complete the reservation transaction in your wallet, then mint the NFT on Arc Testnet.',
+                ? 'Tweet verified and agent reserved on Arc Mainnet. Mint the NFT to finalize the claim.'
+                : 'Tweet verified. Complete the reservation transaction in your wallet, then mint the NFT on Arc Mainnet.',
             reservationTxHash,
             reservationParams,
         });
